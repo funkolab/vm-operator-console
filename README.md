@@ -10,6 +10,18 @@ It manages the operator's Custom Resources — `VirtualMachine`,
 - **Packaging**: one container (Bun single-file binary serving the built SPA) + a Helm chart
 - **Tooling**: every tool and task is managed by [mise](https://mise.jdx.dev)
 
+![Dashboard](docs/screenshots/dashboard.png)
+
+## Screenshots
+
+| Virtual machines | VM detail |
+|---|---|
+| ![Virtual machines](docs/screenshots/vms.png) | ![VM detail](docs/screenshots/vm-detail.png) |
+| **Templates** | **Deploy from a template** |
+| ![Templates](docs/screenshots/templates.png) | ![Deploy from a template](docs/screenshots/deploy-template.png) |
+| **Dark theme** | |
+| ![Dashboard in dark theme](docs/screenshots/dashboard-dark.png) | |
+
 ## Features
 
 | Area | Capabilities |
@@ -124,7 +136,7 @@ CI (`.github/workflows/ci.yml`) publishes to GHCR:
 |---|---|---|
 | Pull request | built (amd64 + arm64), not pushed | — |
 | Push to `main` | `main`, `sha-<short>` | — |
-| Tag `vX.Y.Z` | `X.Y.Z`, `X.Y`, `X` (from 1.0), `sha-<short>` | `X.Y.Z` (chart `version` and `appVersion` set from the tag) |
+| Tag `vX.Y.Z` | `X.Y.Z`, `X.Y`, `X` (from 1.0), `latest`, `sha-<short>` | `X.Y.Z` (chart `version` and `appVersion` set from the tag) |
 
 ```sh
 git tag v0.1.0 && git push origin v0.1.0
