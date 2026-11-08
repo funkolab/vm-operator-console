@@ -1,0 +1,20 @@
+# Values for the NKP management cluster nkp1, served next to the other NKP apps
+# at https://nkp1.nxlab.fr/dkp/vm-console. NKP's traefik-forward-auth returns the
+# user in X-Forwarded-User and the groups in Impersonate-Group (one header per
+# group, merged as "a, b" by the server).
+image:
+  tag: 0.1.0
+basePath: /dkp/vm-console
+auth:
+  mode: traefik
+  userHeader: X-Forwarded-User
+  groupsHeader: Impersonate-Group
+  groupsSeparator: ","
+  debug: true
+ingress:
+  traefik:
+    host: nkp1.nxlab.fr
+    pathPrefix: /dkp/vm-console
+    # hack/nkp/forwardauth.yaml (Traefik refuses cross-namespace middlewares)
+    middlewares:
+      - name: forwardauth

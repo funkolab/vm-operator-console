@@ -17,10 +17,5 @@ networkPolicy:
   enabled: true
   traefikNamespaceLabels: [kubernetes.io/metadata.name=vm-console]
   traefikPodLabels: [app=fake-auth]
-  extraFrom:
-    # helm test pod
-    - podSelector:
-        matchLabels:
-          app.kubernetes.io/component: test
 rbac:
   userRoles: false # provided by hack/kind/rbac-roles.yaml (shared with the dev server)

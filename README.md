@@ -162,6 +162,26 @@ remote-auth middleware), `basePath` (when served under a prefix),
 `networkPolicy.traefikNamespaceLabels` / `traefikPodLabels`. On first install,
 `auth.debug=true` exposes `/api/debug/identity` to verify the received headers.
 
+### NKP (Kommander) behind traefik-forward-auth
+
+`hack/nkp/` serves the console at `https://<cluster>/dkp/vm-console` behind
+NKP's own sign-in (example values for `nkp1.nxlab.fr`):
+
+```sh
+kubectl create namespace vm-console
+kubectl apply -f hack/nkp/forwardauth.yaml   # forwardauth middleware + URL access for signed-in users
+helm upgrade --install vm-operator-console charts/vm-operator-console -n vm-console \
+  -f hack/nkp/helm-values.yaml --wait
+```
+
+- Traefik on NKP does not allow cross-namespace middlewares, so the
+  `kommander/forwardauth` middleware is copied into `vm-console`.
+- traefik-forward-auth checks the URL against Kubernetes RBAC
+  (`nonResourceURLs`); `dkp-vm-console-view` lets every signed-in user in,
+  like `dkp-headlamp-view`. What they can do inside is their own RBAC.
+- The groups arrive as one `Impersonate-Group` header per group, which needs
+  Bun ≥ 1.4 to be read correctly (older versions keep only the last one).
+
 ### Configuration (environment)
 
 | Variable | Default | Description |

@@ -1,0 +1,39 @@
+# Copy of kommander/forwardauth in the console namespace: Traefik on NKP does not
+# allow IngressRoutes to reference middlewares from another namespace.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: forwardauth
+  namespace: vm-console
+spec:
+  forwardAuth:
+    address: http://traefik-forward-auth-mgmt.kommander.svc.cluster.local:4181/
+    authResponseHeaders:
+      - X-Forwarded-User
+      - Impersonate-User
+      - Impersonate-Group
+    trustForwardHeader: true
+---
+# traefik-forward-auth runs with enableRBAC: it checks access to the URL with a
+# SubjectAccessReview. Let every signed-in user reach the console (like
+# dkp-headlamp-view); what they can do inside is still their own RBAC.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dkp-vm-console-view
+rules:
+  - nonResourceURLs: [/dkp/vm-console, /dkp/vm-console/*]
+    verbs: [get, head, post, put, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dkp-vm-console-authenticated-users
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dkp-vm-console-view
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:authenticated

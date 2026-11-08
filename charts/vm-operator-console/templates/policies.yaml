@@ -26,6 +26,11 @@ spec:
               {{- $kv := splitn "=" 2 . }}
               {{ $kv._0 }}: {{ $kv._1 | quote }}
               {{- end }}
+        # helm test pod (same namespace: whoever can create pods here can already use the console ServiceAccount)
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: test
         {{- with .Values.networkPolicy.extraFrom }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
