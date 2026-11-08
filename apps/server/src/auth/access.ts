@@ -17,7 +17,7 @@ const MATRIX: [ResourceName, Verb[]][] = [
   ["virtualmachineservices", ["list", "create", "update", "delete"]],
   ["nutanixprismcontexts", ["list", "get", "create", "patch", "delete"]],
   ["configmaps", ["list", "create", "update", "delete"]],
-  ["secrets", ["list", "create", "update", "get"]],
+  ["secrets", ["list", "create", "update", "get", "delete"]],
   ["events", ["list"]],
 ];
 

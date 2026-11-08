@@ -10,6 +10,7 @@ import { Transport } from "./k8s/transport";
 import { log, setLogLevel } from "./log";
 import { PrismService } from "./prism/service";
 import { ContextService } from "./services/contexts";
+import { GuestScriptService } from "./services/guest-scripts";
 import { TemplateService } from "./services/templates";
 import { VMService } from "./services/vms";
 import { VMServiceService } from "./services/vmservices";
@@ -22,6 +23,7 @@ const conn = loadClusterConnection(cfg);
 const transport = new Transport(conn);
 const sa = new KubeClient(transport, undefined, cfg.K8S_REQUEST_TIMEOUT_MS);
 const vms = new VMService();
+const templates = new TemplateService();
 
 let lastReady = { at: 0, ok: false, message: "not checked" as string | undefined };
 const deps: Deps = {
@@ -30,8 +32,9 @@ const deps: Deps = {
   access: new AccessService(sa, cfg.PERMISSIONS_TTL_SECONDS * 1000, cfg.WATCH_NAMESPACES),
   prism: new PrismService(sa, cfg),
   vms,
-  templates: new TemplateService(),
+  templates,
   contexts: new ContextService(),
+  guestScripts: new GuestScriptService(templates),
   vmServices: new VMServiceService(),
   hub: new StreamHub(sa, vms),
   readiness: async () => {

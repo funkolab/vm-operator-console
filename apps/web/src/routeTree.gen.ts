@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as ContextsIndexRouteImport } from './routes/contexts/index'
 import { Route as ContextsNewRouteImport } from './routes/contexts/new'
+import { Route as GuestScriptsIndexRouteImport } from './routes/guest-scripts/index'
 import { Route as ServicesIndexRouteImport } from './routes/services/index'
 import { Route as ServicesNewRouteImport } from './routes/services/new'
 import { Route as TemplatesIndexRouteImport } from './routes/templates/index'
@@ -20,6 +21,7 @@ import { Route as TemplatesNewRouteImport } from './routes/templates/new'
 import { Route as VmsIndexRouteImport } from './routes/vms/index'
 import { Route as VmsNewRouteImport } from './routes/vms/new'
 import { Route as ContextsNsNameRouteImport } from './routes/contexts/$ns.$name'
+import { Route as GuestScriptsNsNameRouteImport } from './routes/guest-scripts/$ns.$name'
 import { Route as ServicesNsNameRouteImport } from './routes/services/$ns.$name'
 import { Route as TemplatesNsNameIndexRouteImport } from './routes/templates/$ns.$name.index'
 import { Route as TemplatesNsNameEditRouteImport } from './routes/templates/$ns.$name.edit'
@@ -44,6 +46,11 @@ const ContextsIndexRoute = ContextsIndexRouteImport.update({
 const ContextsNewRoute = ContextsNewRouteImport.update({
   id: '/contexts/new',
   path: '/contexts/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuestScriptsIndexRoute = GuestScriptsIndexRouteImport.update({
+  id: '/guest-scripts/',
+  path: '/guest-scripts/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ServicesIndexRoute = ServicesIndexRouteImport.update({
@@ -81,6 +88,11 @@ const ContextsNsNameRoute = ContextsNsNameRouteImport.update({
   path: '/contexts/$ns/$name',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GuestScriptsNsNameRoute = GuestScriptsNsNameRouteImport.update({
+  id: '/guest-scripts/$ns/$name',
+  path: '/guest-scripts/$ns/$name',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ServicesNsNameRoute = ServicesNsNameRouteImport.update({
   id: '/services/$ns/$name',
   path: '/services/$ns/$name',
@@ -115,10 +127,12 @@ export interface FileRoutesByFullPath {
   '/templates/new': typeof TemplatesNewRoute
   '/vms/new': typeof VmsNewRoute
   '/contexts/': typeof ContextsIndexRoute
+  '/guest-scripts/': typeof GuestScriptsIndexRoute
   '/services/': typeof ServicesIndexRoute
   '/templates/': typeof TemplatesIndexRoute
   '/vms/': typeof VmsIndexRoute
   '/contexts/$ns/$name': typeof ContextsNsNameRoute
+  '/guest-scripts/$ns/$name': typeof GuestScriptsNsNameRoute
   '/services/$ns/$name': typeof ServicesNsNameRoute
   '/templates/$ns/$name/edit': typeof TemplatesNsNameEditRoute
   '/vms/$ns/$name/edit': typeof VmsNsNameEditRoute
@@ -133,10 +147,12 @@ export interface FileRoutesByTo {
   '/templates/new': typeof TemplatesNewRoute
   '/vms/new': typeof VmsNewRoute
   '/contexts': typeof ContextsIndexRoute
+  '/guest-scripts': typeof GuestScriptsIndexRoute
   '/services': typeof ServicesIndexRoute
   '/templates': typeof TemplatesIndexRoute
   '/vms': typeof VmsIndexRoute
   '/contexts/$ns/$name': typeof ContextsNsNameRoute
+  '/guest-scripts/$ns/$name': typeof GuestScriptsNsNameRoute
   '/services/$ns/$name': typeof ServicesNsNameRoute
   '/templates/$ns/$name/edit': typeof TemplatesNsNameEditRoute
   '/vms/$ns/$name/edit': typeof VmsNsNameEditRoute
@@ -152,10 +168,12 @@ export interface FileRoutesById {
   '/templates/new': typeof TemplatesNewRoute
   '/vms/new': typeof VmsNewRoute
   '/contexts/': typeof ContextsIndexRoute
+  '/guest-scripts/': typeof GuestScriptsIndexRoute
   '/services/': typeof ServicesIndexRoute
   '/templates/': typeof TemplatesIndexRoute
   '/vms/': typeof VmsIndexRoute
   '/contexts/$ns/$name': typeof ContextsNsNameRoute
+  '/guest-scripts/$ns/$name': typeof GuestScriptsNsNameRoute
   '/services/$ns/$name': typeof ServicesNsNameRoute
   '/templates/$ns/$name/edit': typeof TemplatesNsNameEditRoute
   '/vms/$ns/$name/edit': typeof VmsNsNameEditRoute
@@ -172,10 +190,12 @@ export interface FileRouteTypes {
     | '/templates/new'
     | '/vms/new'
     | '/contexts/'
+    | '/guest-scripts/'
     | '/services/'
     | '/templates/'
     | '/vms/'
     | '/contexts/$ns/$name'
+    | '/guest-scripts/$ns/$name'
     | '/services/$ns/$name'
     | '/templates/$ns/$name/edit'
     | '/vms/$ns/$name/edit'
@@ -190,10 +210,12 @@ export interface FileRouteTypes {
     | '/templates/new'
     | '/vms/new'
     | '/contexts'
+    | '/guest-scripts'
     | '/services'
     | '/templates'
     | '/vms'
     | '/contexts/$ns/$name'
+    | '/guest-scripts/$ns/$name'
     | '/services/$ns/$name'
     | '/templates/$ns/$name/edit'
     | '/vms/$ns/$name/edit'
@@ -208,10 +230,12 @@ export interface FileRouteTypes {
     | '/templates/new'
     | '/vms/new'
     | '/contexts/'
+    | '/guest-scripts/'
     | '/services/'
     | '/templates/'
     | '/vms/'
     | '/contexts/$ns/$name'
+    | '/guest-scripts/$ns/$name'
     | '/services/$ns/$name'
     | '/templates/$ns/$name/edit'
     | '/vms/$ns/$name/edit'
@@ -227,10 +251,12 @@ export interface RootRouteChildren {
   TemplatesNewRoute: typeof TemplatesNewRoute
   VmsNewRoute: typeof VmsNewRoute
   ContextsIndexRoute: typeof ContextsIndexRoute
+  GuestScriptsIndexRoute: typeof GuestScriptsIndexRoute
   ServicesIndexRoute: typeof ServicesIndexRoute
   TemplatesIndexRoute: typeof TemplatesIndexRoute
   VmsIndexRoute: typeof VmsIndexRoute
   ContextsNsNameRoute: typeof ContextsNsNameRoute
+  GuestScriptsNsNameRoute: typeof GuestScriptsNsNameRoute
   ServicesNsNameRoute: typeof ServicesNsNameRoute
   TemplatesNsNameEditRoute: typeof TemplatesNsNameEditRoute
   VmsNsNameEditRoute: typeof VmsNsNameEditRoute
@@ -266,6 +292,13 @@ declare module '@tanstack/react-router' {
       path: '/contexts/new'
       fullPath: '/contexts/new'
       preLoaderRoute: typeof ContextsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guest-scripts/': {
+      id: '/guest-scripts/'
+      path: '/guest-scripts'
+      fullPath: '/guest-scripts/'
+      preLoaderRoute: typeof GuestScriptsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/services/': {
@@ -317,6 +350,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContextsNsNameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/guest-scripts/$ns/$name': {
+      id: '/guest-scripts/$ns/$name'
+      path: '/guest-scripts/$ns/$name'
+      fullPath: '/guest-scripts/$ns/$name'
+      preLoaderRoute: typeof GuestScriptsNsNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/services/$ns/$name': {
       id: '/services/$ns/$name'
       path: '/services/$ns/$name'
@@ -363,10 +403,12 @@ const rootRouteChildren: RootRouteChildren = {
   TemplatesNewRoute: TemplatesNewRoute,
   VmsNewRoute: VmsNewRoute,
   ContextsIndexRoute: ContextsIndexRoute,
+  GuestScriptsIndexRoute: GuestScriptsIndexRoute,
   ServicesIndexRoute: ServicesIndexRoute,
   TemplatesIndexRoute: TemplatesIndexRoute,
   VmsIndexRoute: VmsIndexRoute,
   ContextsNsNameRoute: ContextsNsNameRoute,
+  GuestScriptsNsNameRoute: GuestScriptsNsNameRoute,
   ServicesNsNameRoute: ServicesNsNameRoute,
   TemplatesNsNameEditRoute: TemplatesNsNameEditRoute,
   VmsNsNameEditRoute: VmsNsNameEditRoute,

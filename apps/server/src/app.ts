@@ -9,6 +9,7 @@ import type { Deps } from "./context";
 import { errorHandler } from "./errors";
 import { log } from "./log";
 import { contextRoutes } from "./routes/contexts";
+import { guestScriptRoutes } from "./routes/guest-scripts";
 import { systemRoutes } from "./routes/system";
 import { templateRoutes } from "./routes/templates";
 import { vmRoutes } from "./routes/vms";
@@ -22,6 +23,7 @@ export function createApi(deps: Deps, remoteAddr: (c: Context) => string | undef
     .route("/", vmRoutes(deps))
     .route("/", templateRoutes(deps))
     .route("/", contextRoutes(deps))
+    .route("/", guestScriptRoutes(deps))
     .route("/", vmServiceRoutes(deps));
 }
 

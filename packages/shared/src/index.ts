@@ -1,6 +1,7 @@
 export * from "./api";
 export * from "./constants";
 export * from "./crd";
+export * from "./guest-scripts";
 export * from "./k8s";
 export * from "./pointer";
 export * from "./quantity";

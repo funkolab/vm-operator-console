@@ -1,14 +1,11 @@
 import {
-  Annotations,
   type DashboardStats,
-  DNS1123_SUBDOMAIN,
   type KubeEvent,
   Labels,
   LabelValues,
   type MeResponse,
   NamespaceParam,
   type NutanixPrismContext,
-  type Secret,
   type StreamMessage,
   stripManagedFields,
   summarizeVM,
@@ -20,22 +17,12 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import type { AppEnv } from "../auth/identity";
-import { type Deps, userClient, userName } from "../context";
+import { type Deps, userClient } from "../context";
 import { ApiError } from "../errors";
 import { R } from "../k8s/client";
-import { isNotFound } from "../k8s/errors";
 import { zv } from "./validate";
 
 const WATCH_KINDS = ["virtualmachines", "virtualmachineservices", "nutanixprismcontexts", "configmaps", "events"] as const;
-
-const GuestSecretSchema = z.object({
-  name: z.string().regex(DNS1123_SUBDOMAIN).max(253),
-  type: z.enum(["CloudInit", "Sysprep"]),
-  content: z
-    .string()
-    .min(1)
-    .max(64 * 1024),
-});
 
 export function systemRoutes(deps: Deps) {
   return new Hono<AppEnv>()
@@ -185,43 +172,6 @@ export function systemRoutes(deps: Deps) {
         attention: attention.slice(0, 50),
       };
       return c.json(stats);
-    })
-    .get("/namespaces/:ns/guest-secrets", zv("param", NamespaceParam), async (c) => {
-      const { ns } = c.req.valid("param");
-      const res = await userClient(c, deps)
-        .listAll<Secret>(R.secrets, ns, { labelSelector: `${Labels.type}=${LabelValues.guestCustomization}` })
-        .catch(() => ({ items: [] as Secret[] }));
-      return c.json({
-        items: res.items.map((s) => ({ name: s.metadata.name, type: s.data?.unattendXml ? "Sysprep" : "CloudInit" })),
-      });
-    })
-    .post("/namespaces/:ns/guest-secrets", zv("param", NamespaceParam), zv("json", GuestSecretSchema), async (c) => {
-      const { ns } = c.req.valid("param");
-      const body = c.req.valid("json");
-      const k = userClient(c, deps);
-      const key = body.type === "CloudInit" ? "userData" : "unattendXml";
-      const secret: Secret = {
-        apiVersion: "v1",
-        kind: "Secret",
-        metadata: {
-          name: body.name,
-          namespace: ns,
-          labels: { [Labels.managed]: "true", [Labels.type]: LabelValues.guestCustomization },
-          annotations: userName(c) ? { [Annotations.updatedBy]: userName(c) as string } : undefined,
-        },
-        type: "Opaque",
-        data: { [key]: Buffer.from(body.content, "utf8").toString("base64") },
-      };
-      try {
-        const existing = await k.get<Secret>(R.secrets, ns, body.name);
-        if (existing.metadata.labels?.[Labels.type] !== LabelValues.guestCustomization)
-          throw new ApiError(409, "AlreadyExists", `Secret "${body.name}" already exists and is not managed by the console`);
-        await k.replace(R.secrets, ns, body.name, { ...secret, metadata: { ...secret.metadata, resourceVersion: existing.metadata.resourceVersion } });
-      } catch (e) {
-        if (!isNotFound(e)) throw e;
-        await k.create(R.secrets, ns, secret);
-      }
-      return c.json({ name: body.name }, 201);
     })
     .get("/stream", zv("query", z.object({ namespaces: z.string().min(1), kinds: z.string().optional() })), async (c) => {
       const id = c.get("identity");

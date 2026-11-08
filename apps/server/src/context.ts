@@ -5,6 +5,7 @@ import type { Config } from "./config";
 import type { KubeClient } from "./k8s/client";
 import type { PrismService } from "./prism/service";
 import type { ContextService } from "./services/contexts";
+import type { GuestScriptService } from "./services/guest-scripts";
 import type { TemplateService } from "./services/templates";
 import type { VMService } from "./services/vms";
 import type { VMServiceService } from "./services/vmservices";
@@ -19,6 +20,7 @@ export interface Deps {
   vms: VMService;
   templates: TemplateService;
   contexts: ContextService;
+  guestScripts: GuestScriptService;
   vmServices: VMServiceService;
   hub: StreamHub;
   readiness: () => Promise<{ ok: boolean; message?: string }>;

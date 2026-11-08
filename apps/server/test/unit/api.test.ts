@@ -8,6 +8,7 @@ import { fieldToPointer } from "../../src/errors";
 import { setLogLevel } from "../../src/log";
 import { PrismService } from "../../src/prism/service";
 import { ContextService } from "../../src/services/contexts";
+import { GuestScriptService } from "../../src/services/guest-scripts";
 import { TemplateService } from "../../src/services/templates";
 import { VMService } from "../../src/services/vms";
 import { VMServiceService } from "../../src/services/vmservices";
@@ -48,6 +49,7 @@ function setup(env: Record<string, string> = {}) {
             permissions: {
               virtualmachines: { list: true, create: true, patch: true, update: true, delete: true, get: true },
               configmaps: { list: true, create: true, update: true, delete: true },
+              secrets: { list: true, get: true, create: true, update: true, delete: true },
             },
           },
         ]
@@ -55,14 +57,16 @@ function setup(env: Record<string, string> = {}) {
   access.clusterWide = async () => false;
   kube.authorize = (c) => c.identity === undefined || (c.identity.user === "alice" && c.namespace === "team-a");
   const vms = new VMService();
+  const templates = new TemplateService();
   const deps: Deps = {
     cfg,
     sa: kube,
     access,
     prism: new PrismService(kube, cfg),
     vms,
-    templates: new TemplateService(),
+    templates,
     contexts: new ContextService(),
+    guestScripts: new GuestScriptService(templates),
     vmServices: new VMServiceService(),
     hub: { subscribe: () => () => {}, stopAll() {} } as unknown as StreamHub,
     readiness: async () => ({ ok: true }),
@@ -241,6 +245,61 @@ describe("API", () => {
     current.spec.compute.memorySize = "8Gi";
     const res = await ctx.app.request("/api/namespaces/team-a/vms/web-01", { ...json(current), method: "PUT" });
     expect(res.status).toBe(409);
+  });
+
+  test("guest scripts: create, list with usage, edit, conflicts and delete", async () => {
+    const base = "/api/namespaces/team-a/guest-secrets";
+    const cloudConfig = "#cloud-config\nusers:\n  - name: ops\n";
+    let res = await ctx.app.request(base, json({ name: "ubuntu-base", type: "CloudInit", content: cloudConfig, description: "Ops user" }));
+    expect(res.status).toBe(201);
+    const stored = ctx.kube.store.get("secrets/team-a/ubuntu-base") as unknown as {
+      data: Record<string, string>;
+      metadata: { labels: Record<string, string> };
+    };
+    expect(Buffer.from(stored.data.userData as string, "base64").toString()).toBe(cloudConfig);
+    expect(stored.metadata.labels["console.nutanix.com/type"]).toBe("guest-customization");
+
+    // A name already taken is refused instead of silently overwriting the script.
+    res = await ctx.app.request(base, json({ name: "ubuntu-base", type: "CloudInit", content: cloudConfig }));
+    expect(res.status).toBe(409);
+    // Broken cloud-config YAML is rejected before it reaches a VM.
+    res = await ctx.app.request(base, json({ name: "broken", type: "CloudInit", content: "#cloud-config\nusers: [ops\n" }));
+    expect(res.status).toBe(422);
+
+    const web = vm("web-02");
+    (web.spec as Record<string, unknown>).guestCustomization = { type: "CloudInit", secretRef: { name: "ubuntu-base" } };
+    ctx.kube.seed("virtualmachines", web);
+    res = await ctx.app.request(base, { headers: ALICE });
+    const list = (await res.json()) as { items: { name: string; type: string; description?: string; usage: { vms: number } }[] };
+    expect(list.items).toHaveLength(1);
+    expect(list.items[0]).toMatchObject({ name: "ubuntu-base", type: "CloudInit", description: "Ops user", usage: { vms: 1 } });
+
+    res = await ctx.app.request(`${base}/ubuntu-base`, { headers: ALICE });
+    const script = (await res.json()) as { content: string; resourceVersion: string; usage: { vms: { name: string; provisioned: boolean }[] } };
+    expect(script.content).toBe(cloudConfig);
+    expect(script.usage.vms).toEqual([{ name: "web-02", provisioned: true }]);
+
+    const edit = { type: "CloudInit", content: `${cloudConfig}package_update: true\n`, resourceVersion: script.resourceVersion };
+    res = await ctx.app.request(`${base}/ubuntu-base`, { ...json(edit), method: "PUT" });
+    expect(res.status).toBe(200);
+    // Saving again from the old version is a conflict, not a silent overwrite.
+    res = await ctx.app.request(`${base}/ubuntu-base`, { ...json(edit), method: "PUT" });
+    expect(res.status).toBe(409);
+    // VMs reference the script with its engine: the type cannot change.
+    res = await ctx.app.request(`${base}/ubuntu-base`, { ...json({ type: "Sysprep", content: "<unattend/>" }), method: "PUT" });
+    expect(res.status).toBe(422);
+
+    // Secrets not created for guest customization are not exposed or deleted here.
+    ctx.kube.seed("secrets", { metadata: { name: "pc-credentials", namespace: "team-a" }, data: { password: "eA==" } });
+    res = await ctx.app.request(`${base}/pc-credentials`, { headers: ALICE });
+    expect(res.status).toBe(404);
+    res = await ctx.app.request(`${base}/pc-credentials`, { method: "DELETE", headers: { ...ALICE, origin: ORIGIN } });
+    expect(res.status).toBe(404);
+    expect(ctx.kube.store.has("secrets/team-a/pc-credentials")).toBe(true);
+
+    res = await ctx.app.request(`${base}/ubuntu-base`, { method: "DELETE", headers: { ...ALICE, origin: ORIGIN } });
+    expect(res.status).toBe(200);
+    expect(ctx.kube.store.has("secrets/team-a/ubuntu-base")).toBe(false);
   });
 
   test("unknown API routes return JSON 404", async () => {

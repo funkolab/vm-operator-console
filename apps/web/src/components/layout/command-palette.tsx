@@ -1,7 +1,7 @@
 import { summarizeVM } from "@console/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Activity, LayoutDashboard, LayoutTemplate, Moon, Network, Plus, Server, ServerCog, Sun } from "lucide-react";
+import { Activity, FileCode2, LayoutDashboard, LayoutTemplate, Moon, Network, Plus, Server, ServerCog, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
@@ -61,6 +61,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           </CommandItem>
           <CommandItem onSelect={() => go(() => navigate({ to: "/templates" }))}>
             <LayoutTemplate /> Templates
+          </CommandItem>
+          <CommandItem onSelect={() => go(() => navigate({ to: "/guest-scripts" }))}>
+            <FileCode2 /> Guest scripts
           </CommandItem>
           <CommandItem onSelect={() => go(() => navigate({ to: "/services" }))}>
             <Network /> VM services

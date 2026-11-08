@@ -1,6 +1,7 @@
 import { formatQuantity, type ValidationIssue, type VirtualMachine, type VirtualMachineSpec, type VMCDRom, type VMDataDisk, type VMNic } from "@console/shared";
 import { useQuery } from "@tanstack/react-query";
-import { Cpu, Disc3, HardDrive, Lock, Network, Plus, Settings2, Tag, Trash2, Wand2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Cpu, Disc3, ExternalLink, HardDrive, Lock, Network, Plus, Settings2, Tag, Trash2, Wand2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Field, KeyValueEditor, NumberInput, QuantityInput } from "@/components/form";
 import { YamlEditor } from "@/components/lazy";
@@ -12,9 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { NewScriptDialog } from "@/features/guest-scripts/new-script-dialog";
 import { contextsQuery, guestSecretsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
-import { GuestSecretDialog } from "./guest-secret-dialog";
 
 export type Spec = VirtualMachineSpec;
 
@@ -935,6 +936,9 @@ function CustomizationSection({
   const secrets = useQuery({ ...guestSecretsQuery(namespace ?? ""), enabled: !!namespace && namespace !== "_all" });
   const [dialog, setDialog] = useState(false);
   const kind = !gc ? "none" : gc.secretRef ? "secret" : "kv";
+  const candidates = (secrets.data ?? []).filter((x) => x.type === gc?.type);
+  const selected = gc?.secretRef?.name ?? "";
+  const missing = !!selected && secrets.isSuccess && !candidates.some((c) => c.name === selected);
   return (
     <SectionCard
       id="customization"
@@ -996,28 +1000,45 @@ function CustomizationSection({
       </div>
       {gc?.secretRef && (
         <Field
-          label="Secret"
+          label="Script"
           doc="VirtualMachine/spec/guestCustomization/secretRef"
-          error={err("/guestCustomization")}
-          hint={`Secret key "${gc.type === "Sysprep" ? "unattendXml" : "userData"}" holds the ${gc.type === "Sysprep" ? "Unattend.xml" : "cloud-config"}`}
+          error={
+            err("/guestCustomization") ??
+            (missing ? `No ${gc.type === "Sysprep" ? "Sysprep" : "cloud-init"} script named "${selected}" in ${namespace}` : undefined)
+          }
+          hint={
+            secrets.isSuccess && !candidates.length
+              ? `No ${gc.type === "Sysprep" ? "Sysprep" : "cloud-init"} script in ${namespace} yet: create one with New script`
+              : "Reusable scripts are managed under Guest scripts"
+          }
         >
           {(id) => (
             <div className="flex gap-2">
-              <Input
-                id={id}
-                list="guest-secrets"
+              <Select
                 disabled={provisioned}
-                placeholder="secret name"
-                value={gc.secretRef?.name ?? ""}
-                onChange={(e) => onChange({ ...spec, guestCustomization: { type: gc.type, secretRef: { name: e.target.value } } })}
-              />
-              <datalist id="guest-secrets">
-                {(secrets.data ?? [])
-                  .filter((s) => s.type === gc.type)
-                  .map((s) => (
-                    <option key={s.name} value={s.name} />
+                value={selected}
+                onValueChange={(name) => onChange({ ...spec, guestCustomization: { type: gc.type, secretRef: { name } } })}
+              >
+                <SelectTrigger id={id} className="w-full min-w-0">
+                  <SelectValue placeholder={secrets.isLoading ? "Loading scripts…" : "Select a script…"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {candidates.map((c) => (
+                    <SelectItem key={c.name} value={c.name}>
+                      <span className="truncate">{c.name}</span>
+                      {c.description && <span className="text-muted-foreground truncate text-xs">{c.description}</span>}
+                    </SelectItem>
                   ))}
-              </datalist>
+                  {missing && <SelectItem value={selected}>{selected} (not found)</SelectItem>}
+                </SelectContent>
+              </Select>
+              {selected && !missing && namespace && (
+                <Button type="button" variant="outline" size="icon" asChild aria-label={`Open script ${selected}`}>
+                  <Link to="/guest-scripts/$ns/$name" params={{ ns: namespace, name: selected }} target="_blank">
+                    <ExternalLink />
+                  </Link>
+                </Button>
+              )}
               {mode !== "edit" && namespace && namespace !== "_all" && (
                 <Button type="button" variant="outline" onClick={() => setDialog(true)}>
                   <Plus /> New script
@@ -1042,12 +1063,12 @@ function CustomizationSection({
         </Field>
       )}
       {namespace && gc && (
-        <GuestSecretDialog
+        <NewScriptDialog
           open={dialog}
           onOpenChange={setDialog}
           namespace={namespace}
           type={gc.type}
-          onCreated={(name) => onChange({ ...spec, guestCustomization: { type: gc.type, secretRef: { name } } })}
+          onCreated={({ name }) => onChange({ ...spec, guestCustomization: { type: gc.type, secretRef: { name } } })}
         />
       )}
     </SectionCard>

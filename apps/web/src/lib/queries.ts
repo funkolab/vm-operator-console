@@ -76,11 +76,19 @@ export const credentialSecretsQuery = (ns: string) =>
     queryFn: async () => (await unwrap(api.namespaces[":ns"]["credential-secrets"].$get({ param: { ns } }))).items,
   });
 
-export const guestSecretsQuery = (ns: string) =>
+export const guestSecretsQuery = (scope: string) =>
   queryOptions({
-    queryKey: ["guest-secrets", ns],
-    queryFn: async () => (await unwrap(api.namespaces[":ns"]["guest-secrets"].$get({ param: { ns } }))).items,
-    enabled: !!ns && ns !== ALL,
+    queryKey: ["guest-secrets", scope],
+    queryFn: async () =>
+      (scope === ALL ? await unwrap(api["guest-secrets"].$get()) : await unwrap(api.namespaces[":ns"]["guest-secrets"].$get({ param: { ns: scope } }))).items,
+    enabled: !!scope,
+    placeholderData: keepPreviousData,
+  });
+
+export const guestScriptQuery = (ns: string, name: string) =>
+  queryOptions({
+    queryKey: ["guest-secret", ns, name],
+    queryFn: () => unwrap(api.namespaces[":ns"]["guest-secrets"][":name"].$get({ param: { ns, name } })),
   });
 
 export const servicesQuery = (scope: string) =>

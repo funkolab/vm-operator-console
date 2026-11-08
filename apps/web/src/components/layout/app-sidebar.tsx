@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, Boxes, LayoutDashboard, LayoutTemplate, Network, Server, ServerCog } from "lucide-react";
+import { Activity, Boxes, FileCode2, LayoutDashboard, LayoutTemplate, Network, Server, ServerCog } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -31,6 +31,7 @@ const NAV = [
     items: [
       { to: "/vms", label: "Virtual machines", icon: Server },
       { to: "/templates", label: "Templates", icon: LayoutTemplate },
+      { to: "/guest-scripts", label: "Guest scripts", icon: FileCode2 },
     ],
   },
   {
