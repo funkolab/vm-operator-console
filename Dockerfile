@@ -2,7 +2,7 @@
 # Multi-stage build: one statically compiled Bun binary + the built SPA on a
 # distroless, non-root base image.
 
-ARG BUN_VERSION=1.3.14
+ARG BUN_VERSION=1.4.4
 
 FROM --platform=$BUILDPLATFORM oven/bun:${BUN_VERSION} AS build
 WORKDIR /src

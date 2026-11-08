@@ -1,7 +1,7 @@
 # All tooling and tasks for vm-operator-console. Run `mise tasks` to list them.
 
 [tools]
-bun = "1.3"
+bun = "1.4"
 kubectl = "1.33"
 helm = "3"
 kind = "latest"

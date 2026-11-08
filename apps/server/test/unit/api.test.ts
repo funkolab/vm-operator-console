@@ -80,6 +80,35 @@ describe("identity", () => {
   test("parses groups and drops reserved system: groups", () => {
     expect(parseGroups("a, b,system:masters,,c", ",")).toEqual(["a", "b", "c"]);
   });
+  // NKP's traefik-forward-auth sends one Impersonate-Group header per group; Bun < 1.4 kept only the last one.
+  test("merges repeated group headers received by Bun.serve", async () => {
+    const server = Bun.serve({
+      port: 0,
+      hostname: "127.0.0.1",
+      fetch: (req) => Response.json(parseGroups(req.headers.get("impersonate-group") ?? undefined, ",")),
+    });
+    try {
+      let raw = "";
+      const done = Promise.withResolvers<void>();
+      const sock = await Bun.connect({
+        hostname: "127.0.0.1",
+        port: server.port as number,
+        socket: {
+          data: (_s, d) => {
+            raw += d.toString();
+          },
+          close: () => done.resolve(),
+        },
+      });
+      sock.write(
+        "GET / HTTP/1.1\r\nHost: x\r\nImpersonate-Group: system:authenticated\r\nImpersonate-Group: oidc:a\r\nImpersonate-Group: oidc:b\r\nConnection: close\r\n\r\n",
+      );
+      await done.promise;
+      expect(JSON.parse(raw.slice(raw.indexOf("\r\n\r\n") + 4))).toEqual(["oidc:a", "oidc:b"]);
+    } finally {
+      server.stop(true);
+    }
+  });
   test("matches CIDRs (IPv4, IPv6, mapped)", () => {
     expect(ipInCidrs("10.1.2.3", ["10.0.0.0/8"])).toBe(true);
     expect(ipInCidrs("::ffff:10.1.2.3", ["10.0.0.0/8"])).toBe(true);
