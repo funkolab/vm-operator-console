@@ -131,7 +131,8 @@ export class AccessService {
         visible.push({ name: ns, permissions });
       }
     };
-    await Promise.all(Array.from({ length: Math.min(16, candidates.length) }, worker));
+    // Each worker issues up to ~20 reviews at once; 4 workers keep the burst within one connection's stream limit.
+    await Promise.all(Array.from({ length: Math.min(4, candidates.length) }, worker));
     visible.sort((a, b) => a.name.localeCompare(b.name));
     this.cache.set(this.key(id), { value: visible, expires: Date.now() + this.ttlMs });
     log.debug("Computed namespace access", { user: id?.user ?? "(self)", namespaces: visible.length, ms: Date.now() - started });
