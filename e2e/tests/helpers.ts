@@ -1,4 +1,4 @@
-import type { APIRequestContext, Browser, Page } from "@playwright/test";
+import type { APIRequestContext, Browser, Locator, Page } from "@playwright/test";
 
 /** Same-origin header for API mutations (CSRF protection). */
 export const ORIGIN = new URL(process.env.BASE_URL ?? "http://127.0.0.1:8091").origin;
@@ -12,6 +12,28 @@ export async function pageAs(browser: Browser, headers: Record<string, string>, 
   const page = await ctx.newPage();
   await page.addInitScript(() => localStorage.setItem("console.namespace", "_all"));
   return page;
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Sets a Nutanix reference field (cluster, image, subnet…): through the catalog
+ * picker when a Prism Central context is selected, else the plain name input.
+ */
+export async function pickRef(scope: Locator, kind: string, name: string) {
+  const picker = scope.getByRole("combobox", { name: new RegExp(`^Select an? ${escapeRe(kind)}`) });
+  if ((await picker.count()) === 0) {
+    await scope.getByPlaceholder(`${kind} name`).fill(name);
+    return;
+  }
+  await picker.first().click();
+  const page = scope.page();
+  await page.getByPlaceholder(new RegExp(`^Search ${escapeRe(kind)}s in`)).fill(name);
+  // A catalog entry when Prism Central answers, else the free entry.
+  await page
+    .getByRole("option", { name: new RegExp(`^(Use “)?${escapeRe(name)}`) })
+    .first()
+    .click();
 }
 
 export function uniq(prefix: string) {

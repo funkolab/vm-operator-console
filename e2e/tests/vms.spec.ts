@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ALICE, cleanup, ORIGIN, pageAs, uniq } from "./helpers";
+import { ALICE, cleanup, ORIGIN, pageAs, pickRef, uniq } from "./helpers";
 
 test.describe("Virtual machines", () => {
   test("list, filter and open a VM", async ({ browser, baseURL }) => {
@@ -21,9 +21,9 @@ test.describe("Virtual machines", () => {
     const page = await pageAs(browser, ALICE, baseURL);
     await page.goto("/vms/new");
     await page.getByPlaceholder("web-01").fill(name);
-    await page.locator("#general").getByPlaceholder("cluster name").fill("PE-Paris-01");
-    await page.locator("#boot").getByPlaceholder("image name").fill("ubuntu-24.04-cloud");
-    await page.locator("#network").getByPlaceholder("subnet name").fill("vlan-100-prod");
+    await pickRef(page.locator("#general"), "cluster", "PE-Paris-01");
+    await pickRef(page.locator("#boot"), "image", "ubuntu-24.04-cloud");
+    await pickRef(page.locator("#network"), "subnet", "vlan-100-prod");
     // Client-side rule: SCSI.0 is reserved for the boot disk
     await page.locator("#storage").getByRole("button", { name: "Add disk" }).click();
     await page.locator("#storage").getByLabel("Device index").first().fill("0");

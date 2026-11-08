@@ -35,7 +35,7 @@ function NewContextPage() {
   const [credSource, setCredSource] = useState<"new" | "existing">("new");
   const [cred, setCred] = useState<Credential>({ mode: "basic", username: "", password: "" });
   const [existing, setExisting] = useState("");
-  const [projectMode, setProjectMode] = useState<"default" | "name" | "extId">("default");
+  const [projectMode, setProjectMode] = useState<"default" | "name">("default");
   const [project, setProject] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [test, setTest] = useState<TestConnectionResult>();
@@ -58,7 +58,7 @@ function NewContextPage() {
             port: port ?? 9440,
             tlsMode,
             caBundle: tlsMode === "Secure" ? caBundle : undefined,
-            project: projectMode === "default" ? undefined : projectMode === "name" ? { type: "name", name: project } : { type: "extId", extId: project },
+            project: projectMode === "default" ? undefined : { type: "name", name: project },
             credential: credSource === "existing" ? { mode: "existing", secretName: existing } : cred,
           },
         }),
@@ -209,12 +209,9 @@ function NewContextPage() {
             <SelectContent>
               <SelectItem value="default">Default project</SelectItem>
               <SelectItem value="name">By name</SelectItem>
-              <SelectItem value="extId">By UUID</SelectItem>
             </SelectContent>
           </Select>
-          {projectMode !== "default" && (
-            <Input value={project} placeholder={projectMode === "name" ? "project name" : "UUID"} onChange={(e) => setProject(e.target.value.trim())} />
-          )}
+          {projectMode !== "default" && <Input value={project} placeholder="project name" onChange={(e) => setProject(e.target.value.trim())} />}
         </div>
       </SectionCard>
       {create.error && (

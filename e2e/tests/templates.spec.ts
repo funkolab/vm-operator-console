@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ALICE, cleanup, ORIGIN, pageAs, uniq } from "./helpers";
+import { ALICE, cleanup, ORIGIN, pageAs, pickRef, uniq } from "./helpers";
 
 test.describe("VM templates", () => {
   test("create a template in the UI, deploy two VMs from it, then delete it", async ({ browser, request, baseURL }) => {
@@ -10,8 +10,8 @@ test.describe("VM templates", () => {
     await page.getByLabel("Display name").first().fill(`E2E ${id}`);
     await page.getByLabel("Template ID").fill(id);
     // Fixed values in the VM definition
-    await page.locator("#boot").getByPlaceholder("image name").fill("ubuntu-24.04-cloud");
-    await page.locator("#network").getByPlaceholder("subnet name").fill("vlan-100-prod");
+    await pickRef(page.locator("#boot"), "image", "ubuntu-24.04-cloud");
+    await pickRef(page.locator("#network"), "subnet", "vlan-100-prod");
     await page.getByRole("button", { name: "Create template" }).click();
 
     await expect(page).toHaveURL(new RegExp(`/templates/team-a/${id}$`));
@@ -24,7 +24,7 @@ test.describe("VM templates", () => {
     await dialog.getByLabel("VM name").fill(`${id}-{1..2}`);
     await dialog.getByRole("button", { name: "Deploy" }).click();
     await expect(dialog.getByText("Required").first()).toBeVisible();
-    await dialog.getByPlaceholder("cluster name").fill("PE-Paris-01");
+    await pickRef(dialog, "cluster", "PE-Paris-01");
     await expect(dialog.getByText(`${id}-1, ${id}-2`)).toBeVisible();
     await dialog.getByRole("button", { name: "Deploy" }).click();
 
