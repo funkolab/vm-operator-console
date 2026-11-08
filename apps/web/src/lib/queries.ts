@@ -140,3 +140,17 @@ export function useNamespacesWith(resource: ResourceName, verb: Verb): string[] 
   const { data } = useMe();
   return (data?.namespaces ?? []).filter((n) => n.permissions[resource]?.[verb]).map((n) => n.name);
 }
+
+/**
+ * Namespace preselected in creation forms: the one picked in the top bar, else
+ * the first one holding a Prism Central context (VMs only bind contexts from
+ * their own namespace), else the first allowed one.
+ */
+export function usePreferredNamespace(namespaces: string[], scope: string): { namespace: string; loading: boolean } {
+  const explicit = scope !== ALL && namespaces.includes(scope);
+  const contexts = useQuery({ ...contextsQuery(ALL), enabled: !explicit && namespaces.length > 1 });
+  if (explicit) return { namespace: scope, loading: false };
+  if (contexts.isLoading) return { namespace: "", loading: true };
+  const withContext = new Set((contexts.data ?? []).map((c) => c.metadata.namespace));
+  return { namespace: namespaces.find((n) => withContext.has(n)) ?? namespaces[0] ?? "", loading: false };
+}

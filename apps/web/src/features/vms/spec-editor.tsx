@@ -87,6 +87,8 @@ export function VMSpecEditor({ spec, onChange, namespace, issues = [], issuePref
   const contexts = useQuery({ ...contextsQuery(namespace ?? ""), enabled: !!namespace && namespace !== "_all" });
   const ctxNames = (contexts.data ?? []).map((c) => c.metadata.name as string);
   const context = spec.context?.name ?? (ctxNames.length === 1 ? ctxNames[0] : undefined);
+  // The operator only binds contexts from the VM's own namespace.
+  const noContext = !!namespace && namespace !== "_all" && contexts.isSuccess && ctxNames.length === 0;
   const P = (path: string, label: string) => (paramToggle ? paramToggle(path, label) : null);
   const vcpus = (spec.compute?.numSockets ?? 0) * (spec.compute?.numCoresPerSocket ?? 1) * (spec.compute?.numThreadsPerCore ?? 1);
   const isOn = original?.status?.powerState === "On" && spec.powerState !== "Off";
@@ -108,7 +110,7 @@ export function VMSpecEditor({ spec, onChange, namespace, issues = [], issuePref
             <Field
               label="Prism Central context"
               doc="VirtualMachine/spec/context"
-              error={err("/context")}
+              error={err("/context") ?? (noContext ? `No Prism Central account in namespace ${namespace}: add one there or pick another namespace` : undefined)}
               locked={lockMsg}
               aside={P("/spec/context/name", "Prism Central context")}
             >
@@ -122,7 +124,10 @@ export function VMSpecEditor({ spec, onChange, namespace, issues = [], issuePref
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__auto">Automatic {ctxNames.length === 1 ? `(${ctxNames[0]})` : "(single context in namespace)"}</SelectItem>
+                    <SelectItem value="__auto">
+                      Automatic{" "}
+                      {ctxNames.length === 1 ? `(${ctxNames[0]})` : ctxNames.length === 0 ? "(none in this namespace)" : "(single context in namespace)"}
+                    </SelectItem>
                     {ctxNames.map((n) => (
                       <SelectItem key={n} value={n}>
                         {n}

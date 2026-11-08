@@ -3,11 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { LayoutTemplate } from "lucide-react";
 import { toast } from "sonner";
-import { ErrorState, Page, PageHeader } from "@/components/page";
+import { ErrorState, LoadingState, Page, PageHeader } from "@/components/page";
 import { type TemplateDraft, TemplateEditor } from "@/features/templates/template-editor";
 import { api, errorMessage, unwrap } from "@/lib/api";
-import { ALL, useNamespace } from "@/lib/namespace";
-import { useNamespacesWith } from "@/lib/queries";
+import { useNamespace } from "@/lib/namespace";
+import { useNamespacesWith, usePreferredNamespace } from "@/lib/queries";
 
 export const Route = createFileRoute("/templates/new")({ component: NewTemplatePage });
 
@@ -16,6 +16,7 @@ function NewTemplatePage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const namespaces = useNamespacesWith("configmaps", "create");
+  const preferred = usePreferredNamespace(namespaces, scope);
   const m = useMutation({
     mutationFn: (t: TemplateDraft) => unwrap(api.namespaces[":ns"].templates.$post({ param: { ns: t.namespace }, query: {}, json: t })),
     onSuccess: (t) => {
@@ -31,9 +32,15 @@ function NewTemplatePage() {
         <ErrorState error={new Error("You are not allowed to create templates (ConfigMaps) in any namespace.")} />
       </Page>
     );
+  if (preferred.loading)
+    return (
+      <Page>
+        <LoadingState />
+      </Page>
+    );
   const initial: TemplateDraft = {
     name: "",
-    namespace: scope !== ALL && namespaces.includes(scope) ? scope : (namespaces[0] as string),
+    namespace: preferred.namespace,
     displayName: "",
     tags: [],
     osType: "Linux",

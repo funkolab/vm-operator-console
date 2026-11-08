@@ -17,19 +17,16 @@ export async function pageAs(browser: Browser, headers: Record<string, string>, 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * Sets a Nutanix reference field (cluster, image, subnet…): through the catalog
- * picker when a Prism Central context is selected, else the plain name input.
+ * Sets a Nutanix reference field (cluster, image, subnet…) through its picker:
+ * the catalog entry when Prism Central answers, else the typed name.
  */
 export async function pickRef(scope: Locator, kind: string, name: string) {
-  const picker = scope.getByRole("combobox", { name: new RegExp(`^Select an? ${escapeRe(kind)}`) });
-  if ((await picker.count()) === 0) {
-    await scope.getByPlaceholder(`${kind} name`).fill(name);
-    return;
-  }
-  await picker.first().click();
+  await scope
+    .getByRole("combobox", { name: new RegExp(`^Select an? ${escapeRe(kind)}`) })
+    .first()
+    .click();
   const page = scope.page();
-  await page.getByPlaceholder(new RegExp(`^Search ${escapeRe(kind)}s in`)).fill(name);
-  // A catalog entry when Prism Central answers, else the free entry.
+  await page.locator("[cmdk-input]").fill(name);
   await page
     .getByRole("option", { name: new RegExp(`^(Use “)?${escapeRe(name)}`) })
     .first()

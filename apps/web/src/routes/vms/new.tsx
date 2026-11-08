@@ -7,8 +7,8 @@ import { z } from "zod";
 import { ErrorState, LoadingState, Page, PageHeader } from "@/components/page";
 import { VMForm } from "@/features/vms/vm-form";
 import { api, errorMessage, unwrap } from "@/lib/api";
-import { ALL, useNamespace } from "@/lib/namespace";
-import { useNamespacesWith, vmQuery } from "@/lib/queries";
+import { useNamespace } from "@/lib/namespace";
+import { useNamespacesWith, usePreferredNamespace, vmQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/vms/new")({
   validateSearch: z.object({ from: z.string().optional() }),
@@ -38,7 +38,8 @@ function NewVMPage() {
   const namespaces = useNamespacesWith("virtualmachines", "create");
   const [srcNs, srcName] = from?.split("/") ?? [];
   const src = useQuery({ ...vmQuery(srcNs ?? "", srcName ?? ""), enabled: !!from });
-  const defaultNs = scope !== ALL && namespaces.includes(scope) ? scope : (namespaces[0] ?? "");
+  const preferred = usePreferredNamespace(namespaces, scope);
+  const defaultNs = preferred.namespace;
 
   const create = useMutation({
     mutationFn: (vm: VirtualMachine) => unwrap(api.namespaces[":ns"].vms.$post({ param: { ns: vm.metadata.namespace as string }, query: {}, json: vm })),
@@ -50,7 +51,7 @@ function NewVMPage() {
     onError: (e) => toast.error(errorMessage(e)),
   });
 
-  if (from && src.isLoading)
+  if ((from && src.isLoading) || preferred.loading)
     return (
       <Page>
         <LoadingState />

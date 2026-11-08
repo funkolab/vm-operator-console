@@ -5,7 +5,6 @@ import { Check, ChevronsUpDown, CloudOff, Loader2, Pencil, RefreshCw, X } from "
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { catalogQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -68,19 +67,8 @@ export function ResourceRefPicker({
   const q = useQuery({ ...catalogQuery(namespace ?? "", context, kind), enabled: browsable && (open || v?.type === "extId") });
   const items = q.data?.items ?? [];
   const picked = v?.type === "extId" ? items.find((i) => i.extId === v.extId) : undefined;
-  const display = v?.type === "extId" ? (picked?.name ?? (q.isLoading ? "…" : "Unknown resource")) : v?.name;
-
-  if (!browsable)
-    return (
-      <Input
-        id={id}
-        disabled={disabled}
-        aria-invalid={invalid}
-        placeholder={`${label} name`}
-        value={(v?.type === "extId" ? v.extId : v?.name) ?? ""}
-        onChange={(e) => onChange({ type: "name", name: e.target.value })}
-      />
-    );
+  // Without a catalog an extId cannot be resolved to a name, so it is shown as is.
+  const display = v?.type === "extId" ? (picked?.name ?? (!browsable ? v.extId : q.isLoading ? "…" : "Unknown resource")) : v?.name;
 
   const choose = (i: CatalogItem) => {
     const shared = items.filter((x) => x.name === i.name).length > 1;
@@ -118,9 +106,15 @@ export function ResourceRefPicker({
       </PopoverTrigger>
       <PopoverContent className="w-(--radix-popover-trigger-width) min-w-72 p-0" align="start">
         <Command>
-          <CommandInput value={search} onValueChange={setSearch} placeholder={`Search ${label}s in ${context}…`} />
+          <CommandInput value={search} onValueChange={setSearch} placeholder={browsable ? `Search ${label}s in ${context}…` : `Type the ${label} name…`} />
           <CommandList>
-            {q.isLoading ? (
+            {!browsable ? (
+              <div className="text-muted-foreground flex flex-col items-center gap-1.5 px-4 py-6 text-center text-sm">
+                <CloudOff className="size-5" />
+                <p>{namespace ? `No Prism Central account in namespace ${namespace}, so the ${label} list is unavailable.` : "Choose a namespace first."}</p>
+                <p className="text-xs">Type the {label} name above to use it.</p>
+              </div>
+            ) : q.isLoading ? (
               // Same height as the loaded list, so the popup does not flip above the field once loaded.
               <div className="text-muted-foreground flex h-[300px] items-center justify-center gap-2 text-sm">
                 <Loader2 className="size-4 animate-spin" /> Loading from Prism Central…
