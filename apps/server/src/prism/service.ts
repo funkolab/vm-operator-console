@@ -80,7 +80,9 @@ export class PrismService {
       const version = await new PrismClient(creds, this.cfg.PRISM_REQUEST_TIMEOUT_MS).version();
       return { ok: true, message: "Connection successful", pcVersion: version, latencyMs: Date.now() - started };
     } catch (e) {
-      return { ok: false, message: e instanceof Error ? e.message : String(e), latencyMs: Date.now() - started };
+      const message = e instanceof Error ? e.message : String(e);
+      log.warn("Prism Central connection test failed", { address: creds.address, port: creds.port, error: message });
+      return { ok: false, message, latencyMs: Date.now() - started };
     }
   }
 

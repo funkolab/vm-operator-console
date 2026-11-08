@@ -16,12 +16,14 @@ beforeAll(async () => {
       const url = new URL(req.url);
       seen.push({ path: url.pathname + url.search, auth: req.headers.get("authorization"), apiKey: req.headers.get("x-ntnx-api-key") });
       if (req.headers.get("authorization") === `Basic ${btoa("admin:wrong")}`) return new Response("unauthorized", { status: 401 });
-      if (url.pathname === "/api/prism/v4.0/management/domain-managers") return Response.json({ data: [{ config: { buildInfo: { version: "pc.7.6" } } }] });
+      // An API key of "old-pc" simulates a PC older than 2024.3 (no domain manager API).
+      if (url.pathname === "/api/prism/v4.0/config/domain-managers" && req.headers.get("x-ntnx-api-key") !== "old-pc")
+        return Response.json({ data: [{ config: { buildInfo: { version: "pc.7.6" } } }] });
       if (url.pathname === "/api/clustermgmt/v4.0/config/clusters")
         return Response.json({
           data: [
             { extId: "c1", name: "PE-01", nodes: { numberOfNodes: 3 } },
-            { extId: "pc", name: "PC", config: { clusterFunction: ["PRISM_CENTRAL"] } },
+            { extId: "pc", name: "PC", config: { clusterFunction: ["PRISM_CENTRAL"], buildInfo: { version: "pc.2024.2" } } },
           ],
           metadata: { totalAvailableResults: 2 },
         });
@@ -39,6 +41,12 @@ describe("PrismClient", () => {
   test("reads the PC version with basic auth", async () => {
     expect(await new PrismClient(creds()).version()).toBe("pc.7.6");
     expect(seen.at(-1)?.auth).toBe(`Basic ${btoa("admin:pw")}`);
+  });
+
+  test("falls back to the cluster list on PCs without the domain manager API", async () => {
+    expect(await new PrismClient(creds({ username: undefined, apiKey: "old-pc" })).version()).toBe("pc.2024.2");
+    expect(seen.at(-2)?.path).toBe("/api/prism/v4.0/config/domain-managers");
+    expect(seen.at(-1)?.path).toBe("/api/clustermgmt/v4.0/config/clusters");
   });
 
   test("uses the API key header", async () => {

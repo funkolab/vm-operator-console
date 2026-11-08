@@ -84,8 +84,16 @@ export class PrismClient {
   }
 
   async version(): Promise<string | undefined> {
-    const res = await this.get<{ data?: { config?: { buildInfo?: { version?: string } } }[] }>("/api/prism/v4.0/management/domain-managers");
-    return res.data?.[0]?.config?.buildInfo?.version;
+    try {
+      const res = await this.get<V4List<{ config?: { buildInfo?: { version?: string } } }>>("/api/prism/v4.0/config/domain-managers");
+      return res.data?.[0]?.config?.buildInfo?.version;
+    } catch (e) {
+      // The domain manager API needs PC 2024.3+; older PCs list themselves among the clusters.
+      if (!(e instanceof PrismError) || e.status !== 404) throw e;
+      const res =
+        await this.get<V4List<{ config?: { clusterFunction?: string[]; buildInfo?: { version?: string } } }>>("/api/clustermgmt/v4.0/config/clusters");
+      return res.data?.find((c) => c.config?.clusterFunction?.includes("PRISM_CENTRAL"))?.config?.buildInfo?.version;
+    }
   }
 
   async catalog(kind: CatalogKind): Promise<CatalogItem[]> {
