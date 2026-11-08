@@ -1,6 +1,6 @@
 # vm-operator-console
 
-A modern, responsive web console for the [Nutanix vm-operator](../vm-operator).
+A modern, responsive web console for the [Nutanix vm-operator](https://github.com/nutanix-cloud-native/vm-operator).
 It manages the operator's Custom Resources — `VirtualMachine`,
 `VirtualMachineService` and `NutanixPrismContext` — and adds reusable VM
 **templates** stored as plain ConfigMaps (no extra CRD).
