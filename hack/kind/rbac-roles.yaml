@@ -1,0 +1,68 @@
+# Aggregatable roles for console users (also shipped by the Helm chart).
+# They grant end users what they need on the vm-operator CRDs and the core
+# objects the console manages; the console itself only impersonates.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vm-console-viewer
+rules:
+  - apiGroups: ["vmm.v4.nutanix.com"]
+    resources: [virtualmachines, virtualmachineservices]
+    verbs: [get, list, watch]
+  - apiGroups: ["prism.v4.nutanix.com"]
+    resources: [nutanixprismcontexts]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [configmaps, events]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [services]
+    verbs: [get, list, watch]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: [endpointslices]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vm-console-operator
+rules:
+  - apiGroups: ["vmm.v4.nutanix.com"]
+    resources: [virtualmachines, virtualmachineservices]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: ["prism.v4.nutanix.com"]
+    resources: [nutanixprismcontexts]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [configmaps, events]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [list, create, update]
+  - apiGroups: [""]
+    resources: [services]
+    verbs: [get, list, watch]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: [endpointslices]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vm-console-admin
+rules:
+  - apiGroups: ["vmm.v4.nutanix.com"]
+    resources: [virtualmachines, virtualmachineservices]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: ["prism.v4.nutanix.com"]
+    resources: [nutanixprismcontexts]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [configmaps, secrets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [events, services]
+    verbs: [get, list, watch]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: [endpointslices]
+    verbs: [get, list, watch]

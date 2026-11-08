@@ -1,0 +1,100 @@
+{{- if .Values.rbac.userRoles }}
+# End-user roles. Bind them to your NKP/Dex groups per namespace (RoleBinding)
+# or cluster-wide (ClusterRoleBinding). They also aggregate into the built-in
+# view/edit/admin roles so existing NKP workspace roles keep working.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vm-console-viewer
+  labels:
+    {{- include "vmc.labels" . | nindent 4 }}
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+  - apiGroups: [vmm.v4.nutanix.com]
+    resources: [virtualmachines, virtualmachineservices]
+    verbs: [get, list, watch]
+  - apiGroups: [prism.v4.nutanix.com]
+    resources: [nutanixprismcontexts]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [configmaps, events, services]
+    verbs: [get, list, watch]
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vm-console-operator
+  labels:
+    {{- include "vmc.labels" . | nindent 4 }}
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+  - apiGroups: [vmm.v4.nutanix.com]
+    resources: [virtualmachines, virtualmachineservices]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [prism.v4.nutanix.com]
+    resources: [nutanixprismcontexts]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [configmaps, events, services]
+    verbs: [get, list, watch]
+  # Create/update cloud-init and Sysprep script Secrets (no read of their content)
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [list, create, update]
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vm-console-admin
+  labels:
+    {{- include "vmc.labels" . | nindent 4 }}
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+rules:
+  - apiGroups: [vmm.v4.nutanix.com]
+    resources: [virtualmachines, virtualmachineservices]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [prism.v4.nutanix.com]
+    resources: [nutanixprismcontexts]
+    verbs: [get, list, watch, create, update, patch, delete]
+  # Templates (ConfigMaps), CA bundles and Prism credential Secrets
+  - apiGroups: [""]
+    resources: [configmaps, secrets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [events, services]
+    verbs: [get, list, watch]
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [get, list, watch]
+{{- end }}
+{{- range .Values.rbac.bindings }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vm-console-{{ .role }}-{{ $.Release.Name }}
+  namespace: {{ .namespace }}
+  labels:
+    {{- include "vmc.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vm-console-{{ .role }}
+subjects:
+  {{- range .groups }}
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: {{ . }}
+  {{- end }}
+  {{- range .users }}
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: {{ . }}
+  {{- end }}
+{{- end }}

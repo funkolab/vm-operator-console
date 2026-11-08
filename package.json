@@ -1,0 +1,20 @@
+{
+  "name": "vm-operator-console",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "e2e"
+  ],
+  "scripts": {
+    "lint": "bunx --bun biome check .",
+    "format": "bunx --bun biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.6",
+    "@types/bun": "latest",
+    "typescript": "^5.9.3",
+    "yaml": "^2.9.1"
+  }
+}

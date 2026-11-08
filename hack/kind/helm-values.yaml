@@ -1,0 +1,26 @@
+# Values for the kind dev cluster. kind has no NKP Traefik / remote-auth, so a
+# tiny header-injecting reverse proxy (hack/kind/fake-auth.yaml) plays the role
+# of Traefik + remote-auth and forwards X-Forwarded-User / X-Forwarded-Groups.
+replicaCount: 2
+image:
+  repository: vm-operator-console
+  tag: dev
+  pullPolicy: IfNotPresent
+logLevel: debug
+auth:
+  mode: traefik
+  debug: true
+ingress:
+  traefik:
+    enabled: false
+networkPolicy:
+  enabled: true
+  traefikNamespaceLabels: [kubernetes.io/metadata.name=vm-console]
+  traefikPodLabels: [app=fake-auth]
+  extraFrom:
+    # helm test pod
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: test
+rbac:
+  userRoles: false # provided by hack/kind/rbac-roles.yaml (shared with the dev server)

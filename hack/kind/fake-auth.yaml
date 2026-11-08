@@ -1,0 +1,64 @@
+# Stand-in for NKP Traefik + remote-auth on kind: an nginx reverse proxy that
+# injects the identity headers (the user can be chosen with ?as=bob or the
+# X-Act-As header for testing). Never deploy this outside a dev cluster.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fake-auth
+  namespace: vm-console
+data:
+  default.conf: |
+    map $http_x_act_as $console_user {
+      default "alice";
+      "bob"   "bob";
+      "carol" "carol";
+    }
+    map $console_user $console_groups {
+      "alice" "team-a-admins";
+      "bob"   "team-b-ops";
+      default "";
+    }
+    server {
+      listen 8080;
+      location / {
+        proxy_pass http://vm-operator-console.vm-console.svc.cluster.local:80;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-User $console_user;
+        proxy_set_header X-Forwarded-Groups $console_groups;
+        proxy_buffering off;
+        proxy_read_timeout 1h;
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fake-auth
+  namespace: vm-console
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: fake-auth }
+  template:
+    metadata:
+      labels: { app: fake-auth }
+    spec:
+      containers:
+        - name: nginx
+          image: nginxinc/nginx-unprivileged:1.27-alpine
+          ports: [{ containerPort: 8080 }]
+          volumeMounts:
+            - { name: conf, mountPath: /etc/nginx/conf.d }
+      volumes:
+        - name: conf
+          configMap: { name: fake-auth }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fake-auth
+  namespace: vm-console
+spec:
+  selector: { app: fake-auth }
+  ports: [{ port: 80, targetPort: 8080 }]

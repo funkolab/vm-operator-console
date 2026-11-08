@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vmc.fullname" . }}
+  labels:
+    {{- include "vmc.labels" . | nindent 4 }}
+data:
+  K8S_MODE: in-cluster
+  PORT: "8080"
+  BASE_PATH: {{ .Values.basePath | quote }}
+  LOG_LEVEL: {{ .Values.logLevel | quote }}
+  WATCH_NAMESPACES: {{ join "," .Values.watchNamespaces | quote }}
+  AUTH_MODE: {{ .Values.auth.mode | quote }}
+  AUTH_USER_HEADER: {{ .Values.auth.userHeader | quote }}
+  AUTH_GROUPS_HEADER: {{ .Values.auth.groupsHeader | quote }}
+  AUTH_GROUPS_SEPARATOR: {{ .Values.auth.groupsSeparator | quote }}
+  AUTH_EXTRA_GROUPS: {{ join "," .Values.auth.extraGroups | quote }}
+  AUTH_TRUSTED_PROXIES: {{ join "," .Values.auth.trustedProxies | quote }}
+  AUTH_DEBUG: {{ .Values.auth.debug | quote }}
+  PERMISSIONS_TTL_SECONDS: {{ .Values.auth.permissionsTTLSeconds | quote }}
+  {{- if eq .Values.auth.mode "dev" }}
+  DEV_USER: {{ .Values.auth.dev.user | quote }}
+  DEV_GROUPS: {{ join "," .Values.auth.dev.groups | quote }}
+  {{- if .Values.auth.dev.allowDevInCluster }}
+  ALLOW_DEV_AUTH_IN_CLUSTER: "1"
+  {{- end }}
+  {{- end }}
+  PRISM_PROXY_ENABLED: {{ .Values.prismProxy.enabled | quote }}
+  PRISM_CACHE_TTL_SECONDS: {{ .Values.prismProxy.cacheTTLSeconds | quote }}
+  PRISM_REQUEST_TIMEOUT_MS: {{ .Values.prismProxy.requestTimeoutMs | quote }}

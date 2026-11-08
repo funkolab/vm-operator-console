@@ -1,0 +1,11 @@
+apiVersion: v2
+name: vm-operator-console
+description: Web console for the Nutanix vm-operator (VirtualMachines, templates, VM services and Prism Central accounts)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.30.0-0"
+keywords: [nutanix, virtual-machines, vm-operator, console, nkp]
+home: https://github.com/nutanix-cloud-native/vm-operator
+annotations:
+  artifacthub.io/license: Apache-2.0

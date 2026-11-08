@@ -1,0 +1,24 @@
+{
+  "name": "@console/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/app.ts"
+  },
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "build": "bun build src/index.ts --compile --minify --sourcemap --target=bun --outfile dist/vm-operator-console",
+    "typecheck": "bunx --bun tsc -p tsconfig.json",
+    "test": "bun test test/unit",
+    "test:integration": "bun test test/integration"
+  },
+  "dependencies": {
+    "@console/shared": "workspace:*",
+    "@hono/zod-validator": "^0.9.1",
+    "hono": "^4.13.17",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  }
+}

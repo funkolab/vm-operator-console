@@ -1,0 +1,79 @@
+{{- if .Values.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "vmc.serviceAccountName" . }}
+  labels:
+    {{- include "vmc.labels" . | nindent 4 }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- if .Values.rbac.create }}
+---
+# The console ServiceAccount performs every user-facing Kubernetes call by
+# impersonating the authenticated user, so it needs no write access of its
+# own. It only needs to impersonate, to evaluate access reviews, to list
+# namespaces (candidates for the namespace picker) and to read Prism
+# credential Secrets/CA ConfigMaps for the read-only catalog proxy.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "vmc.fullname" . }}
+  labels:
+    {{- include "vmc.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: [users]
+    verbs: [impersonate]
+    {{- with .Values.rbac.impersonateUsers }}
+    resourceNames:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  - apiGroups: [""]
+    resources: [groups]
+    verbs: [impersonate]
+    {{- with .Values.rbac.impersonateGroups }}
+    resourceNames:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  - apiGroups: [authorization.k8s.io]
+    resources: [subjectaccessreviews, selfsubjectaccessreviews]
+    verbs: [create]
+  - apiGroups: [""]
+    resources: [namespaces]
+    verbs: [get, list, watch]
+  - apiGroups: [apiextensions.k8s.io]
+    resources: [customresourcedefinitions]
+    resourceNames:
+      - virtualmachines.vmm.v4.nutanix.com
+      - virtualmachineservices.vmm.v4.nutanix.com
+      - nutanixprismcontexts.prism.v4.nutanix.com
+    verbs: [get]
+  {{- if .Values.prismProxy.enabled }}
+  - apiGroups: [""]
+    resources: [configmaps]
+    verbs: [get]
+  {{- if .Values.rbac.readSecrets }}
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get]
+  {{- end }}
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "vmc.fullname" . }}
+  labels:
+    {{- include "vmc.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "vmc.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "vmc.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

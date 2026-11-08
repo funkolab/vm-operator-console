@@ -1,0 +1,13 @@
+{
+  "name": "@console/e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun --bun x playwright test",
+    "typecheck": "bunx --bun tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/bun": "^1.4.4"
+  }
+}

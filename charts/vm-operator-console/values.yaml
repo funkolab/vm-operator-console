@@ -1,0 +1,157 @@
+# -- Number of console replicas. The console is stateless; any replica can serve any request.
+replicaCount: 2
+
+image:
+  # -- Container image repository
+  repository: ghcr.io/funkolab/vm-operator-console
+  # -- Image tag (defaults to the chart appVersion)
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# -- Image pull secrets
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # -- Create the console ServiceAccount
+  create: true
+  # -- ServiceAccount name (generated when empty)
+  name: ""
+  annotations: {}
+
+# -- Restrict the namespaces the console considers. Empty means all namespaces;
+# users still only see namespaces their own RBAC allows.
+watchNamespaces: []
+
+# -- URL path prefix when the console is not served at the root (e.g. /dkp/vm-console)
+basePath: ""
+
+logLevel: info
+
+auth:
+  # -- traefik: identity from the Traefik forward/remote-auth headers (production);
+  # dev: fixed identity (refused in-cluster unless allowDevInCluster); none: no impersonation.
+  mode: traefik
+  # -- Header carrying the authenticated user name
+  userHeader: X-Forwarded-User
+  # -- Header carrying the user's groups
+  groupsHeader: X-Forwarded-Groups
+  # -- Separator used in the groups header
+  groupsSeparator: ","
+  # -- Groups added to every impersonated identity (e.g. system:authenticated is implied by the API server)
+  extraGroups: []
+  # -- Only accept identity headers from these source CIDRs (defense in depth; empty disables the check)
+  trustedProxies: []
+  # -- Expose /api/debug/identity to inspect the received headers (troubleshooting only)
+  debug: false
+  # -- Seconds a user's computed permissions are cached
+  permissionsTTLSeconds: 60
+  dev:
+    user: dev-admin
+    groups: []
+    allowDevInCluster: false
+
+prismProxy:
+  # -- Enable the read-only Prism Central catalog proxy (clusters, subnets, images…)
+  enabled: true
+  # -- Catalog cache TTL in seconds
+  cacheTTLSeconds: 120
+  requestTimeoutMs: 15000
+
+rbac:
+  # -- Create the console ClusterRole/Binding (impersonation, access reviews, read for the catalog proxy)
+  create: true
+  # -- Restrict impersonation to these user names (empty: any user). Groups are always allowed.
+  impersonateUsers: []
+  # -- Restrict impersonation to these groups (empty: any group)
+  impersonateGroups: []
+  # -- Allow the console to read credential Secrets for the Prism catalog proxy
+  readSecrets: true
+  # -- Install aggregated end-user roles (vm-console-viewer/operator/admin) to bind to your groups
+  userRoles: true
+  # -- Example bindings created from the end-user roles, e.g.
+  #   - { namespace: team-a, role: admin, groups: [team-a-admins] }
+  bindings: []
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+ingress:
+  traefik:
+    # -- Create a Traefik IngressRoute (NKP)
+    enabled: true
+    entryPoints: [websecure]
+    # -- Host name; empty matches any host (use with pathPrefix behind Kommander)
+    host: ""
+    # -- Path prefix routed to the console (set basePath accordingly)
+    pathPrefix: /
+    # -- Traefik middlewares applied to the route; the first one authenticates the user
+    middlewares:
+      - name: remote-auth
+        namespace: kommander
+    tls:
+      enabled: true
+      # -- Secret holding the certificate (empty uses the entrypoint default certificate)
+      secretName: ""
+  # -- Standard Kubernetes Ingress (alternative to the IngressRoute)
+  standard:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: vm-console.example.com
+        paths: ["/"]
+    tls: []
+
+networkPolicy:
+  # -- Only allow ingress from the Traefik pods (identity headers must only come from the proxy)
+  enabled: true
+  # -- Labels (key=value) of the namespace running Traefik (NKP: kommander).
+  # Lists replace the defaults entirely when overridden.
+  traefikNamespaceLabels:
+    - kubernetes.io/metadata.name=kommander
+  # -- Labels (key=value) of the Traefik pods
+  traefikPodLabels:
+    - app.kubernetes.io/name=traefik
+  # -- Additional ingress peers (e.g. monitoring)
+  extraFrom: []
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 96Mi
+  limits:
+    memory: 384Mi
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+priorityClassName: ""
+
+# -- Extra environment variables for the console container
+extraEnv: []

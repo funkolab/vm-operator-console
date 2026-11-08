@@ -1,0 +1,265 @@
+# Test fixtures for local development on kind.
+#   alice: admin of team-a (group team-a-admins), viewer of team-b
+#   bob:   operator of team-b (group team-b-ops)
+#   carol: no access
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-a
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-b
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-a-admins
+  namespace: team-a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vm-console-admin
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: team-a-admins
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alice-viewer
+  namespace: team-b
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vm-console-viewer
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: alice
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-b-ops
+  namespace: team-b
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vm-console-operator
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: team-b-ops
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pc-prod-credentials
+  namespace: team-a
+  labels:
+    console.nutanix.com/managed: "true"
+    console.nutanix.com/type: prism-credential
+type: kubernetes.io/basic-auth
+stringData:
+  username: admin
+  password: nutanix/4u
+---
+apiVersion: prism.v4.nutanix.com/v1alpha1
+kind: NutanixPrismContext
+metadata:
+  name: pc-prod
+  namespace: team-a
+spec:
+  endpoint:
+    address: pc.example.internal
+    port: 9440
+    tls:
+      mode: Insecure
+  credential:
+    name: pc-prod-credentials
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pc-lab-credentials
+  namespace: team-b
+  labels:
+    console.nutanix.com/managed: "true"
+    console.nutanix.com/type: prism-credential
+type: Opaque
+stringData:
+  apiKey: lab-api-key
+---
+apiVersion: prism.v4.nutanix.com/v1alpha1
+kind: NutanixPrismContext
+metadata:
+  name: pc-lab
+  namespace: team-b
+spec:
+  endpoint:
+    address: 10.10.0.20
+    tls:
+      mode: Insecure
+  credential:
+    name: pc-lab-credentials
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ubuntu-cloudinit
+  namespace: team-a
+  labels:
+    console.nutanix.com/managed: "true"
+    console.nutanix.com/type: guest-customization
+stringData:
+  userData: |
+    #cloud-config
+    users:
+      - name: ops
+        sudo: ALL=(ALL) NOPASSWD:ALL
+---
+apiVersion: vmm.v4.nutanix.com/v1alpha1
+kind: VirtualMachine
+metadata:
+  name: web-01
+  namespace: team-a
+  labels: { app: web, tier: frontend }
+spec:
+  context: { name: pc-prod }
+  displayName: web-01
+  description: Frontend web server
+  placement: { cluster: { type: name, name: PE-Paris-01 } }
+  compute: { numSockets: 2, numCoresPerSocket: 2, memorySize: 8Gi }
+  bootConfiguration:
+    bootType: uefi
+    bootOrder: [DISK, CDROM]
+    bootDisk:
+      source: { type: Image, image: { type: name, name: ubuntu-24.04-cloud } }
+      diskSize: 50Gi
+  storage:
+    dataDisks:
+      - diskSize: 100Gi
+        deviceProperties: { adapterType: SCSI, deviceIndex: 1 }
+  network:
+    nics:
+      - name: nic0
+        networkInfo: { subnet: { type: name, name: vlan-100-prod } }
+  guestCustomization: { type: CloudInit, secretRef: { name: ubuntu-cloudinit } }
+  categories: [{ key: Environment, value: Production }]
+  powerState: "On"
+---
+apiVersion: vmm.v4.nutanix.com/v1alpha1
+kind: VirtualMachine
+metadata:
+  name: web-02
+  namespace: team-a
+  labels: { app: web, tier: frontend }
+spec:
+  context: { name: pc-prod }
+  placement: { cluster: { type: name, name: PE-Paris-01 } }
+  compute: { numSockets: 2, numCoresPerSocket: 2, memorySize: 8Gi }
+  bootConfiguration:
+    bootType: uefi
+    bootDisk:
+      source: { type: Image, image: { type: name, name: ubuntu-24.04-cloud } }
+      diskSize: 50Gi
+  network:
+    nics:
+      - name: nic0
+        networkInfo: { subnet: { type: name, name: vlan-100-prod } }
+  powerState: "On"
+---
+apiVersion: vmm.v4.nutanix.com/v1alpha1
+kind: VirtualMachine
+metadata:
+  name: db-01
+  namespace: team-a
+  labels: { app: postgres, tier: data }
+spec:
+  context: { name: pc-prod }
+  description: Primary PostgreSQL
+  placement: { cluster: { type: name, name: PE-Paris-02 } }
+  compute: { numSockets: 4, numCoresPerSocket: 2, memorySize: 32Gi }
+  bootConfiguration:
+    bootType: legacy
+    bootDisk:
+      source: { type: Image, image: { type: name, name: rocky-9 } }
+      diskSize: 80Gi
+  storage:
+    flashMode: true
+    dataDisks:
+      - diskSize: 500Gi
+        deviceProperties: { adapterType: SCSI, deviceIndex: 1 }
+        storageConfig: { diskMode: Flash }
+      - diskSize: 200Gi
+        deviceProperties: { adapterType: SCSI, deviceIndex: 2 }
+  network:
+    nics:
+      - name: nic0
+        networkInfo: { subnet: { type: name, name: vlan-200-data } }
+  outOfBandDriftPolicy: Report
+  powerState: "Off"
+---
+apiVersion: vmm.v4.nutanix.com/v1alpha1
+kind: VirtualMachine
+metadata:
+  name: build-agent
+  namespace: team-a
+  labels: { app: ci }
+spec:
+  context: { name: pc-prod }
+  placement: { cluster: { type: name, name: PE-Paris-02 } }
+  compute: { numSockets: 8, memorySize: 16Gi }
+  bootConfiguration:
+    bootDisk:
+      source: { type: Image, image: { type: name, name: ubuntu-24.04-cloud } }
+  network:
+    nics:
+      - name: nic0
+        networkInfo: { subnet: { type: name, name: vlan-100-prod } }
+---
+apiVersion: vmm.v4.nutanix.com/v1alpha1
+kind: VirtualMachine
+metadata:
+  name: win-jump
+  namespace: team-b
+  labels: { app: jumphost }
+spec:
+  placement: { cluster: { type: name, name: PE-Lyon-01 } }
+  compute: { numSockets: 2, numCoresPerSocket: 1, memorySize: 8Gi }
+  bootConfiguration:
+    bootType: uefi
+    bootDisk:
+      source: { type: Image, image: { type: name, name: windows-2022 } }
+      diskSize: 120Gi
+  storage:
+    cdroms:
+      - adapterType: SATA
+        deviceIndex: 0
+        image: { type: name, name: virtio-win }
+  network:
+    nics:
+      - name: nic0
+        networkInfo: { subnet: { type: name, name: lab-net } }
+  powerState: "On"
+---
+apiVersion: vmm.v4.nutanix.com/v1alpha1
+kind: VirtualMachineService
+metadata:
+  name: web
+  namespace: team-a
+spec:
+  selector:
+    matchLabels: { app: web }
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+    - name: https
+      port: 443
+  endpointProbe:
+    enabled: true

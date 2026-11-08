@@ -1,0 +1,49 @@
+{{- if .Values.networkPolicy.enabled }}
+# Identity headers are trusted only because nothing but Traefik can reach the
+# console pods. Egress stays open (kube-apiserver, Prism Central).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "vmc.fullname" . }}
+  labels:
+    {{- include "vmc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "vmc.selectorLabels" . | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{- range .Values.networkPolicy.traefikNamespaceLabels }}
+              {{- $kv := splitn "=" 2 . }}
+              {{ $kv._0 }}: {{ $kv._1 | quote }}
+              {{- end }}
+          podSelector:
+            matchLabels:
+              {{- range .Values.networkPolicy.traefikPodLabels }}
+              {{- $kv := splitn "=" 2 . }}
+              {{ $kv._0 }}: {{ $kv._1 | quote }}
+              {{- end }}
+        {{- with .Values.networkPolicy.extraFrom }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      ports:
+        - port: http
+          protocol: TCP
+{{- end }}
+{{- if and .Values.podDisruptionBudget.enabled (gt (int .Values.replicaCount) 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "vmc.fullname" . }}
+  labels:
+    {{- include "vmc.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "vmc.selectorLabels" . | nindent 6 }}
+{{- end }}

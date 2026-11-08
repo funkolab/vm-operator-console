@@ -1,0 +1,28 @@
+vm-operator-console {{ .Chart.AppVersion }} is installed in namespace {{ .Release.Namespace }}.
+
+{{- if .Values.ingress.traefik.enabled }}
+
+URL: https://{{ default "<cluster-ingress>" .Values.ingress.traefik.host }}{{ .Values.ingress.traefik.pathPrefix }}
+  Authentication: Traefik middleware(s) {{ range .Values.ingress.traefik.middlewares }}{{ .namespace }}/{{ .name }} {{ end }}
+{{- end }}
+
+Auth mode: {{ .Values.auth.mode }}
+{{- if eq .Values.auth.mode "traefik" }}
+  Identity headers: user={{ .Values.auth.userHeader }} groups={{ .Values.auth.groupsHeader }}
+  Every Kubernetes call is made by impersonating that user: users only see and
+  change what their own RBAC allows.
+{{- end }}
+
+Grant access by binding your groups to the provided roles, for example:
+
+  kubectl create rolebinding vm-console-admins -n <namespace> \
+    --clusterrole=vm-console-admin --group=<oidc-group>
+
+Roles: vm-console-viewer (read), vm-console-operator (manage VMs/services), vm-console-admin (+ templates, Prism Central accounts).
+
+Local access without the ingress (identity headers are required in traefik mode):
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "vmc.fullname" . }} 8080:{{ .Values.service.port }}
+{{- if .Values.auth.debug }}
+
+WARNING: auth.debug is enabled; /api/debug/identity exposes the received headers.
+{{- end }}
