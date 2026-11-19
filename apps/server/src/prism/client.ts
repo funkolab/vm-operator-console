@@ -51,7 +51,10 @@ class Gate {
 const gates = new Map<string, Gate>();
 const gateFor = (baseUrl: string) => {
   let g = gates.get(baseUrl);
-  if (!g) gates.set(baseUrl, (g = new Gate(Number(process.env.PRISM_MAX_CONCURRENCY ?? 4))));
+  if (!g) {
+    g = new Gate(Number(process.env.PRISM_MAX_CONCURRENCY ?? 4));
+    gates.set(baseUrl, g);
+  }
   return g;
 };
 

@@ -2,7 +2,7 @@ import { formatBytes, summarizeVM, type VirtualMachine, VM_PHASES, type VMSummar
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertTriangle, LayoutTemplate, Pause, Play, Plus, RotateCcw, Server, Square, Tag, Trash2 } from "lucide-react";
+import { AlertTriangle, LayoutGrid, LayoutTemplate, List, Pause, Play, Plus, RotateCcw, Server, Square, Tag, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -15,17 +15,33 @@ import { EmptyState, ErrorState, LoadingState, Page, PageHeader } from "@/compon
 import { PausedBadge, PhaseBadge, PowerIcon } from "@/components/status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { VMActions } from "@/features/vms/actions";
+import { VMCard } from "@/features/vms/vm-card";
 import { api, errorMessage, unwrap } from "@/lib/api";
 import { age } from "@/lib/format";
 import { ALL, useNamespace } from "@/lib/namespace";
 import { useCan, useNamespacesWith, vmsQuery } from "@/lib/queries";
+import { cn } from "@/lib/utils";
 
-const Search = z.object({ q: z.string().optional() });
+const QUICK = ["all", "running", "stopped", "issues", "busy"] as const;
+type Quick = (typeof QUICK)[number];
+const BUSY = new Set(["Pending", "Provisioning", "Starting", "Stopping", "Restarting", "Updating", "Deleting"]);
+const QUICK_FILTER: Record<Quick, (r: VMSummary) => boolean> = {
+  all: () => true,
+  running: (r) => r.phase === "Running",
+  stopped: (r) => r.phase === "Stopped",
+  issues: (r) => r.phase === "Error" || r.phase === "Degraded" || r.driftCount > 0,
+  busy: (r) => BUSY.has(r.phase),
+};
+const Search = z.object({
+  q: z.string().optional(),
+  view: z.enum(["table", "grid"]).optional().catch(undefined),
+  show: z.enum(QUICK).optional().catch(undefined),
+});
 
 export const Route = createFileRoute("/vms/")({
   validateSearch: Search,
@@ -209,6 +225,10 @@ function VMListPage() {
   );
 
   const presentPhases = new Set(rows.map((r) => r.phase));
+  const show = search.show ?? "all";
+  const view = search.view ?? (localStorage.getItem("vms.view") as "table" | "grid" | null) ?? "table";
+  const rowFilter = useMemo(() => (show === "all" ? undefined : QUICK_FILTER[show]), [show]);
+  const setSearch = (patch: Partial<z.infer<typeof Search>>) => navigate({ to: ".", search: { ...search, ...patch }, replace: true });
 
   return (
     <Page>
@@ -241,7 +261,60 @@ function VMListPage() {
           storageKey="vms.table"
           initialSorting={[{ id: "name", desc: false }]}
           initialSearch={search.q ?? ""}
-          onSearchChange={(v) => navigate({ to: ".", search: { q: v || undefined }, replace: true })}
+          onSearchChange={(v) => setSearch({ q: v || undefined })}
+          rowFilter={rowFilter}
+          gridView={view === "grid"}
+          renderGrid={(items) => (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {items.map((r) => (
+                <VMCard key={r.key} r={r} />
+              ))}
+            </div>
+          )}
+          header={
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="bg-muted/60 inline-flex rounded-lg p-1">
+                {QUICK.map((k) => {
+                  const n = k === "all" ? rows.length : rows.filter(QUICK_FILTER[k]).length;
+                  if (k !== "all" && k !== show && n === 0) return null;
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setSearch({ show: k === "all" ? undefined : k })}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-all",
+                        show === k ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {k === "issues" && n > 0 && <span className="bg-destructive size-1.5 rounded-full" />}
+                      {k}
+                      <span className={cn("tabular rounded px-1 text-xs", show === k ? "bg-muted" : "")}>{n}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                size="sm"
+                value={view}
+                onValueChange={(v) => {
+                  if (!v) return;
+                  localStorage.setItem("vms.view", v);
+                  setSearch({ view: v as "table" | "grid" });
+                }}
+                className="hidden md:flex"
+              >
+                <ToggleGroupItem value="table" aria-label="Table view">
+                  <List />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="grid" aria-label="Card view">
+                  <LayoutGrid />
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          }
           searchPlaceholder="Search name, IP, label…"
           globalFilterFn={(r, s) =>
             r.name.includes(s) ||
@@ -258,27 +331,7 @@ function VMListPage() {
             { columnId: "context", title: "Prism Central" },
           ]}
           onRowClick={(r) => navigate({ to: "/vms/$ns/$name", params: { ns: r.namespace, name: r.name } })}
-          renderMobileCard={(r, selected, toggle) => (
-            <div className="bg-card flex items-start gap-3 rounded-xl border p-3">
-              <Checkbox checked={selected} onCheckedChange={toggle} className="mt-1" aria-label="Select" />
-              <Link to="/vms/$ns/$name" params={{ ns: r.namespace, name: r.name }} className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <PowerIcon observed={r.powerState} desired={r.desiredPowerState} />
-                  <span className="truncate font-medium">{r.displayName}</span>
-                </div>
-                <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                  <span>{r.namespace}</span>
-                  <span>{r.vcpus} vCPU</span>
-                  <span>{formatBytes(r.memoryBytes)}</span>
-                  {r.primaryIP && <span className="font-mono">{r.primaryIP}</span>}
-                </div>
-                <div className="mt-2">
-                  <PhaseBadge phase={r.phase} />
-                </div>
-              </Link>
-              <VMActions vm={r.vm} />
-            </div>
-          )}
+          renderMobileCard={(r, selected, toggle) => <VMCard r={r} selected={selected} onToggle={toggle} />}
           bulkActions={(sel, clear) => <BulkActions rows={sel} clear={clear} can={can} />}
           emptyState={
             <EmptyState

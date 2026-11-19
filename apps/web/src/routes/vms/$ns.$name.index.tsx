@@ -1,4 +1,4 @@
-import { Annotations, formatBytes, formatQuantity, refLabel, summarizeVM, type VirtualMachine, VirtualMachineConditionOrder } from "@console/shared";
+import { formatBytes, formatQuantity, refLabel, summarizeVM, type VirtualMachine, VirtualMachineConditionOrder } from "@console/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Activity, AlertTriangle, Cpu, Disc3, HardDrive, MemoryStick, MonitorPlay, Network } from "lucide-react";
@@ -9,8 +9,8 @@ import { z } from "zod";
 import { Copyable } from "@/components/copy-button";
 import { KeyValueEditor } from "@/components/form";
 import { YamlEditor } from "@/components/lazy";
-import { DescriptionList, EmptyState, ErrorState, LoadingState, Page, PageHeader, Section } from "@/components/page";
-import { ConditionList, PausedBadge, PhaseBadge, ReadyBadge } from "@/components/status";
+import { DescriptionList, EmptyState, ErrorState, LoadingState, Page, Section } from "@/components/page";
+import { ConditionList, ReadyBadge } from "@/components/status";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

@@ -33,6 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { NoResults } from "./page";
 
 export interface FacetDef {
   columnId: string;
@@ -175,6 +176,10 @@ export function DataTable<T>({
   pageSize = 25,
   initialSearch = "",
   onSearchChange,
+  renderGrid,
+  gridView,
+  header,
+  rowFilter,
 }: {
   data: T[];
   columns: ColumnDef<T, unknown>[];
@@ -192,6 +197,13 @@ export function DataTable<T>({
   pageSize?: number;
   initialSearch?: string;
   onSearchChange?: (q: string) => void;
+  /** Optional alternative rendering of the (filtered, sorted, paginated) rows as a grid. */
+  renderGrid?: (rows: T[]) => ReactNode;
+  gridView?: boolean;
+  /** Content rendered above the toolbar (e.g. quick filter tabs). */
+  header?: ReactNode;
+  /** External row filter (e.g. status tabs), applied before faceting. */
+  rowFilter?: (row: T) => boolean;
 }) {
   const [sorting, setSorting] = usePersistentState<SortingState>(storageKey && `${storageKey}.sort`, initialSorting);
   const [visibility, setVisibility] = usePersistentState<VisibilityState>(storageKey && `${storageKey}.cols`, {});
@@ -209,8 +221,9 @@ export function DataTable<T>({
     [globalFilterFn],
   );
 
+  const filteredData = useMemo(() => (rowFilter ? data.filter(rowFilter) : data), [data, rowFilter]);
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     getRowId,
     state: { sorting, columnVisibility: visibility, columnFilters: filters, rowSelection, globalFilter: search },
@@ -252,6 +265,7 @@ export function DataTable<T>({
 
   return (
     <div className="flex flex-col gap-3">
+      {header}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-full sm:w-72">
           <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
@@ -314,7 +328,7 @@ export function DataTable<T>({
       </div>
 
       {bulkActions && selected.length > 0 && (
-        <div className="bg-primary/5 border-primary/20 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
+        <div className="bg-primary/6 border-primary/25 animate-fade-up sticky top-16 z-10 flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 shadow-md backdrop-blur">
           <span className="text-sm font-medium">{selected.length} selected</span>
           <div className="flex flex-wrap items-center gap-1.5">{bulkActions(selected, () => setRowSelection({}))}</div>
           <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setRowSelection({})}>
@@ -327,6 +341,7 @@ export function DataTable<T>({
         emptyState
       ) : (
         <>
+          {gridView && renderGrid && <div className="hidden md:block">{rows.length ? renderGrid(rows.map((r) => r.original)) : <NoResults />}</div>}
           {renderMobileCard && (
             <div className="flex flex-col gap-2 md:hidden">
               {rows.length === 0 && <p className="text-muted-foreground py-10 text-center text-sm">No results.</p>}
@@ -335,16 +350,16 @@ export function DataTable<T>({
               ))}
             </div>
           )}
-          <div className={cn("bg-card overflow-hidden rounded-xl border", renderMobileCard && "hidden md:block")}>
+          <div className={cn("surface overflow-hidden", renderMobileCard && "hidden md:block", gridView && "md:hidden")}>
             <Table>
-              <TableHeader className="bg-muted/40">
+              <TableHeader className="bg-muted/50 [&_tr]:border-b">
                 {table.getHeaderGroups().map((hg) => (
                   <TableRow key={hg.id} className="hover:bg-transparent">
                     {hg.headers.map((h) => (
                       <TableHead
                         key={h.id}
                         style={h.column.columnDef.size && h.column.id === "select" ? { width: h.column.columnDef.size } : undefined}
-                        className="text-muted-foreground h-10 text-xs font-medium tracking-wide uppercase"
+                        className="text-muted-foreground h-10 text-[11px] font-semibold tracking-[0.06em] uppercase first:pl-4"
                       >
                         {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
                       </TableHead>
@@ -364,7 +379,7 @@ export function DataTable<T>({
                     <TableRow
                       key={r.id}
                       data-state={r.getIsSelected() ? "selected" : undefined}
-                      className={cn(onRowClick && "cursor-pointer")}
+                      className={cn("group/row transition-colors", onRowClick && "cursor-pointer")}
                       onClick={(e) => {
                         if (!onRowClick) return;
                         const target = e.target as HTMLElement;
@@ -373,7 +388,7 @@ export function DataTable<T>({
                       }}
                     >
                       {r.getVisibleCells().map((c) => (
-                        <TableCell key={c.id} className="py-2.5">
+                        <TableCell key={c.id} className="py-3 first:pl-4">
                           {flexRender(c.column.columnDef.cell, c.getContext())}
                         </TableCell>
                       ))}

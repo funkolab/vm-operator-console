@@ -212,7 +212,9 @@
     *,
     ::before,
     ::after {
+      /* biome-ignore lint/complexity/noImportantStyles: must override component animations */
       animation-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: must override component transitions */
       transition-duration: 0.01ms !important;
     }
   }
