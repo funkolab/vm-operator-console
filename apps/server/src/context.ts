@@ -3,6 +3,8 @@ import type { AccessService } from "./auth/access";
 import type { AppEnv } from "./auth/identity";
 import type { Config } from "./config";
 import type { KubeClient } from "./k8s/client";
+import type { ConsoleProxy } from "./prism/console";
+import type { InsightsService } from "./prism/insights";
 import type { PrismService } from "./prism/service";
 import type { ContextService } from "./services/contexts";
 import type { GuestScriptService } from "./services/guest-scripts";
@@ -17,6 +19,8 @@ export interface Deps {
   sa: KubeClient;
   access: AccessService;
   prism: PrismService;
+  insights: InsightsService;
+  console: ConsoleProxy;
   vms: VMService;
   templates: TemplateService;
   contexts: ContextService;

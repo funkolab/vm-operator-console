@@ -2,6 +2,7 @@ export * from "./api";
 export * from "./constants";
 export * from "./crd";
 export * from "./guest-scripts";
+export * from "./insights";
 export * from "./k8s";
 export * from "./pc-version";
 export * from "./pointer";

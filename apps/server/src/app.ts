@@ -10,6 +10,7 @@ import { errorHandler } from "./errors";
 import { log } from "./log";
 import { contextRoutes } from "./routes/contexts";
 import { guestScriptRoutes } from "./routes/guest-scripts";
+import { insightRoutes } from "./routes/insights";
 import { systemRoutes } from "./routes/system";
 import { templateRoutes } from "./routes/templates";
 import { vmRoutes } from "./routes/vms";
@@ -24,7 +25,8 @@ export function createApi(deps: Deps, remoteAddr: (c: Context) => string | undef
     .route("/", templateRoutes(deps))
     .route("/", contextRoutes(deps))
     .route("/", guestScriptRoutes(deps))
-    .route("/", vmServiceRoutes(deps));
+    .route("/", vmServiceRoutes(deps))
+    .route("/", insightRoutes(deps));
 }
 
 /** The typed API surface used by the frontend Hono RPC client. */
@@ -67,7 +69,7 @@ export function createApp(deps: Deps, opts: { remoteAddr?: (c: Context) => strin
   });
   app.use("/api/*", csrf());
   app.use("/api/*", async (c, next) => {
-    if (c.req.path.endsWith("/stream")) return next();
+    if (c.req.path.endsWith("/stream") || c.req.path.endsWith("/console")) return next();
     return compress()(c, next);
   });
 

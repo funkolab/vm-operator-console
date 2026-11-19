@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { websocket } from "hono/bun";
 import { createApp } from "./app";
 import { AccessService } from "./auth/access";
 import { loadConfig } from "./config";
@@ -8,6 +9,8 @@ import { KubeClient, R } from "./k8s/client";
 import { loadClusterConnection } from "./k8s/kubeconfig";
 import { Transport } from "./k8s/transport";
 import { log, setLogLevel } from "./log";
+import { ConsoleProxy } from "./prism/console";
+import { InsightsService } from "./prism/insights";
 import { PrismService } from "./prism/service";
 import { ContextService } from "./services/contexts";
 import { GuestScriptService } from "./services/guest-scripts";
@@ -26,11 +29,14 @@ const vms = new VMService();
 const templates = new TemplateService();
 
 let lastReady = { at: 0, ok: false, message: "not checked" as string | undefined };
+const prism = new PrismService(sa, cfg);
 const deps: Deps = {
   cfg,
   sa,
   access: new AccessService(sa, cfg.PERMISSIONS_TTL_SECONDS * 1000, cfg.WATCH_NAMESPACES),
-  prism: new PrismService(sa, cfg),
+  prism,
+  insights: new InsightsService(prism, cfg),
+  console: new ConsoleProxy(),
   vms,
   templates,
   contexts: new ContextService(),
@@ -72,6 +78,7 @@ server = Bun.serve({
   port: cfg.PORT,
   hostname: cfg.HOST,
   fetch: app.fetch,
+  websocket,
   idleTimeout: 0, // SSE streams are long-lived
 });
 

@@ -6,6 +6,8 @@ import { loadConfig } from "../../src/config";
 import type { Deps } from "../../src/context";
 import { fieldToPointer } from "../../src/errors";
 import { setLogLevel } from "../../src/log";
+import { ConsoleProxy } from "../../src/prism/console";
+import { InsightsService } from "../../src/prism/insights";
 import { PrismService } from "../../src/prism/service";
 import { ContextService } from "../../src/services/contexts";
 import { GuestScriptService } from "../../src/services/guest-scripts";
@@ -63,6 +65,8 @@ function setup(env: Record<string, string> = {}) {
     sa: kube,
     access,
     prism: new PrismService(kube, cfg),
+    insights: new InsightsService(new PrismService(kube, cfg), cfg),
+    console: new ConsoleProxy(),
     vms,
     templates,
     contexts: new ContextService(),
