@@ -25,6 +25,7 @@ data:
   ALLOW_DEV_AUTH_IN_CLUSTER: "1"
   {{- end }}
   {{- end }}
+  SCHEDULER_ENABLED: {{ .Values.scheduler.enabled | quote }}
   PRISM_PROXY_ENABLED: {{ .Values.prismProxy.enabled | quote }}
   PRISM_CACHE_TTL_SECONDS: {{ .Values.prismProxy.cacheTTLSeconds | quote }}
   PRISM_REQUEST_TIMEOUT_MS: {{ .Values.prismProxy.requestTimeoutMs | quote }}

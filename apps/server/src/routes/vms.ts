@@ -2,10 +2,14 @@ import {
   BulkActionSchema,
   CloneRequestSchema,
   DryRunQuery,
+  isValidTimeZone,
   NamedParam,
   NamespaceParam,
   PowerActionSchema,
+  PowerScheduleSchema,
   SaveAsTemplateRequestSchema,
+  SCHEDULE_ANNOTATION,
+  SCHEDULE_STATE_ANNOTATION,
   type VirtualMachine,
   VirtualMachineSchema,
 } from "@console/shared";
@@ -13,6 +17,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../auth/identity";
 import { type Deps, userClient, userName } from "../context";
+import { validationError } from "../errors";
 import { zv } from "./validate";
 
 const UpdateQuery = DryRunQuery.extend({
@@ -93,6 +98,30 @@ export function vmRoutes(deps: Deps) {
       const { ns, name } = c.req.valid("param");
       return c.json(await deps.templates.saveFromVM(userClient(c, deps), ns, name, c.req.valid("json"), userName(c)), 201);
     })
+    .put("/namespaces/:ns/vms/:name/schedule", zv("param", NamedParam), zv("json", PowerScheduleSchema), async (c) => {
+      const { ns, name } = c.req.valid("param");
+      const sched = c.req.valid("json");
+      if (!isValidTimeZone(sched.timezone)) throw validationError([{ path: "/timezone", message: `Unknown time zone "${sched.timezone}"` }]);
+      return c.json(
+        await deps.vms.patchMetadata(userClient(c, deps), ns, name, {
+          annotations: { [SCHEDULE_ANNOTATION]: JSON.stringify(sched), [SCHEDULE_STATE_ANNOTATION]: null },
+        }),
+      );
+    })
+    .delete("/namespaces/:ns/vms/:name/schedule", zv("param", NamedParam), async (c) => {
+      const { ns, name } = c.req.valid("param");
+      return c.json(
+        await deps.vms.patchMetadata(userClient(c, deps), ns, name, { annotations: { [SCHEDULE_ANNOTATION]: null, [SCHEDULE_STATE_ANNOTATION]: null } }),
+      );
+    })
+    .get("/scheduler", (c) =>
+      c.json({
+        enabled: !!deps.scheduler,
+        leader: deps.scheduler?.isLeader ?? false,
+        lastTick: deps.scheduler?.lastTick,
+        recent: deps.scheduler?.lastActions.slice(0, 20) ?? [],
+      }),
+    )
     .get("/namespaces/:ns/vms/:name/events", zv("param", NamedParam), async (c) => {
       const { ns, name } = c.req.valid("param");
       return c.json({ items: await deps.vms.events(userClient(c, deps), ns, name) });

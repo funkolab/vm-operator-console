@@ -6,6 +6,7 @@ import type { KubeClient } from "./k8s/client";
 import type { ConsoleProxy } from "./prism/console";
 import type { InsightsService } from "./prism/insights";
 import type { PrismService } from "./prism/service";
+import type { PowerScheduler } from "./scheduler/scheduler";
 import type { ContextService } from "./services/contexts";
 import type { GuestScriptService } from "./services/guest-scripts";
 import type { TemplateService } from "./services/templates";
@@ -27,6 +28,7 @@ export interface Deps {
   guestScripts: GuestScriptService;
   vmServices: VMServiceService;
   hub: StreamHub;
+  scheduler?: PowerScheduler;
   readiness: () => Promise<{ ok: boolean; message?: string }>;
 }
 

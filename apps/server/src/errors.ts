@@ -44,7 +44,12 @@ export function toErrorBody(err: unknown): { status: ContentfulStatusCode; body:
     const details = err.issues.map((i) => ({ path: `/${i.path.join("/")}`, message: i.message }));
     return { status: 400, body: { error: { code: "BadRequest", message: "Invalid request", status: 400, details } } };
   }
-  if (err instanceof HTTPException) return { status: err.status, body: { error: { code: "HTTPError", message: err.message, status: err.status } } };
+  if (err instanceof HTTPException) {
+    const message =
+      err.message ||
+      (err.status === 403 ? "Request rejected: it did not come from the console origin (CSRF protection)" : `Request failed with HTTP ${err.status}`);
+    return { status: err.status, body: { error: { code: err.status === 403 ? "Forbidden" : "HTTPError", message, status: err.status } } };
+  }
   log.error("Unhandled error", { error: err instanceof Error ? (err.stack ?? err.message) : String(err) });
   return { status: 500, body: { error: { code: "InternalError", message: "Internal server error", status: 500 } } };
 }

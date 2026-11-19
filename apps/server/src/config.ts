@@ -50,6 +50,11 @@ export const ConfigSchema = z
     PRISM_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).default(120),
     PRISM_REQUEST_TIMEOUT_MS: z.coerce.number().int().default(15000),
 
+    /** Run VM power schedules (requires patch on virtualmachines for the ServiceAccount). */
+    SCHEDULER_ENABLED: bool.default(true),
+    /** Namespace holding the scheduler leader-election Lease. */
+    POD_NAMESPACE: z.string().default("default"),
+
     APP_VERSION: z.string().default("dev"),
   })
   .superRefine((c, ctx) => {

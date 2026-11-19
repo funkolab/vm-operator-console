@@ -29,6 +29,10 @@
         "permissionsTTLSeconds": { "type": "integer", "minimum": 0 }
       }
     },
+    "scheduler": {
+      "type": "object",
+      "properties": { "enabled": { "type": "boolean" } }
+    },
     "prismProxy": {
       "type": "object",
       "properties": {

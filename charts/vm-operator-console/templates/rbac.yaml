@@ -51,6 +51,13 @@ rules:
       - virtualmachineservices.vmm.v4.nutanix.com
       - nutanixprismcontexts.prism.v4.nutanix.com
     verbs: [get]
+  {{- if .Values.scheduler.enabled }}
+  # Power schedules: users opt in by annotating VMs they can patch; the
+  # console applies the power state at the scheduled time.
+  - apiGroups: [vmm.v4.nutanix.com]
+    resources: [virtualmachines]
+    verbs: [get, list, patch]
+  {{- end }}
   {{- if .Values.prismProxy.enabled }}
   - apiGroups: [""]
     resources: [configmaps]
@@ -72,6 +79,35 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: {{ include "vmc.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "vmc.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+{{- if and .Values.rbac.create .Values.scheduler.enabled }}
+---
+# Leader election for the power scheduler (one active replica).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "vmc.fullname" . }}-leader
+  labels:
+    {{- include "vmc.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [get, create, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "vmc.fullname" . }}-leader
+  labels:
+    {{- include "vmc.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "vmc.fullname" . }}-leader
 subjects:
   - kind: ServiceAccount
     name: {{ include "vmc.serviceAccountName" . }}

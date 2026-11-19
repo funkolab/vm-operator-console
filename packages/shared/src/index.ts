@@ -9,5 +9,6 @@ export * from "./pointer";
 export * from "./quantity";
 export * from "./rightsizing";
 export * from "./rules";
+export * from "./schedule";
 export * from "./templates";
 export * from "./vm";

@@ -52,6 +52,11 @@ auth:
     groups: []
     allowDevInCluster: false
 
+scheduler:
+  # -- Run VM power schedules (office hours, nightly shutdown…). Grants the
+  # console ServiceAccount get/list/patch on virtualmachines and a Lease.
+  enabled: true
+
 prismProxy:
   # -- Enable the read-only Prism Central catalog proxy (clusters, subnets, images…)
   enabled: true

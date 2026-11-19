@@ -88,7 +88,8 @@ export function ConditionList({ conditions, order }: { conditions?: Condition[];
     <ul className="divide-y">
       {sorted.map((c) => {
         const negative = NEGATIVE.has(c.type);
-        const status = negative ? (c.status === "True" ? "False" : c.status === "False" ? "True" : c.status) : c.status;
+        const expected = !negative && c.status === "False" && EXPECTED_NOT_READY.has(c.reason ?? "");
+        const status = expected ? "Unknown" : negative ? (c.status === "True" ? "False" : c.status === "False" ? "True" : c.status) : c.status;
         return (
           <li key={c.type} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
             <ConditionIcon status={status} className="mt-0.5 shrink-0" />
@@ -107,19 +108,28 @@ export function ConditionList({ conditions, order }: { conditions?: Condition[];
   );
 }
 
+/** Reasons for a Ready=False condition that reflect a deliberate state, not a failure. */
+const EXPECTED_NOT_READY = new Set(["PoweredOff", "Paused", "Deleting"]);
+
 export function ReadyBadge({ status, reason }: { status?: string; reason?: string }) {
   const ok = status === "True";
+  const neutral = status === "False" && EXPECTED_NOT_READY.has(reason ?? "");
   return (
-    <Badge
-      variant="outline"
+    <span
       className={cn(
-        "gap-1.5",
-        ok ? "bg-success/12 text-success border-success/25" : status === "False" ? "bg-destructive/10 text-destructive border-destructive/25" : "",
+        "inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ring-1 ring-inset",
+        ok
+          ? "bg-success/10 text-success ring-success/25"
+          : neutral
+            ? "bg-muted text-muted-foreground ring-border"
+            : status === "False"
+              ? "bg-destructive/10 text-destructive ring-destructive/25"
+              : "bg-muted text-muted-foreground ring-border",
       )}
     >
-      <ConditionIcon status={status} className="size-3" />
+      {neutral ? <CircleDashed className="size-3" /> : <ConditionIcon status={status} className="size-3" />}
       {ok ? "Ready" : (reason ?? (status === "False" ? "Not ready" : "Unknown"))}
-    </Badge>
+    </span>
   );
 }
 

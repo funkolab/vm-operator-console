@@ -12,6 +12,7 @@ import { log, setLogLevel } from "./log";
 import { ConsoleProxy } from "./prism/console";
 import { InsightsService } from "./prism/insights";
 import { PrismService } from "./prism/service";
+import { PowerScheduler } from "./scheduler/scheduler";
 import { ContextService } from "./services/contexts";
 import { GuestScriptService } from "./services/guest-scripts";
 import { TemplateService } from "./services/templates";
@@ -30,6 +31,7 @@ const templates = new TemplateService();
 
 let lastReady = { at: 0, ok: false, message: "not checked" as string | undefined };
 const prism = new PrismService(sa, cfg);
+const scheduler = cfg.SCHEDULER_ENABLED ? new PowerScheduler(sa, { namespace: cfg.POD_NAMESPACE, namespaces: cfg.WATCH_NAMESPACES }) : undefined;
 const deps: Deps = {
   cfg,
   sa,
@@ -43,6 +45,7 @@ const deps: Deps = {
   guestScripts: new GuestScriptService(templates),
   vmServices: new VMServiceService(),
   hub: new StreamHub(sa, vms),
+  scheduler,
   readiness: async () => {
     if (Date.now() - lastReady.at < 5000) return { ok: lastReady.ok, message: lastReady.message };
     try {
@@ -81,6 +84,7 @@ server = Bun.serve({
   websocket,
   idleTimeout: 0, // SSE streams are long-lived
 });
+scheduler?.start();
 
 log.info("vm-operator-console started", {
   url: `http://${cfg.HOST}:${cfg.PORT}${cfg.BASE_PATH}/`,
@@ -98,6 +102,7 @@ async function shutdown(signal: string) {
   shuttingDown = true;
   log.info("Shutting down", { signal });
   deps.hub.stopAll();
+  scheduler?.stop();
   await server.stop();
   transport.close();
   process.exit(0);
