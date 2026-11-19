@@ -16,5 +16,6 @@ mkdir -p "$out"
 exec docker run --rm --network host --ipc host \
   -u "$(id -u):$(id -g)" -e HOME=/tmp \
   -e BASE_URL="${BASE_URL:-http://127.0.0.1:8091}" \
+  -e SCHEMES -e VIEWPORTS -e FULL -e WAIT -e ERRLEN -e CI \
   -v "$root:/work" -v "$out:/out" -w /work/e2e \
   "$image" "$@"

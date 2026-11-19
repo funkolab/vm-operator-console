@@ -1,7 +1,7 @@
 import { Annotations, formatBytes, formatQuantity, refLabel, summarizeVM, type VirtualMachine, VirtualMachineConditionOrder } from "@console/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowLeft, Cpu, Disc3, HardDrive, Info, LayoutTemplate, Loader2, MemoryStick, Network, Server } from "lucide-react";
+import { Activity, AlertTriangle, Cpu, Disc3, HardDrive, MemoryStick, MonitorPlay, Network } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { stringify } from "yaml";
@@ -18,14 +18,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EventList } from "@/features/events/event-list";
 import { VMActions } from "@/features/vms/actions";
+import { Monitoring } from "@/features/vms/monitoring";
+import { VMConsole } from "@/features/vms/vm-console";
+import { TaskProgressBanner, VMHero } from "@/features/vms/vm-hero";
 import { api, errorMessage, unwrap } from "@/lib/api";
 import { downloadText, formatDate, relativeTime } from "@/lib/format";
 import { useCan, vmEventsQuery, vmQuery, vmServicesQuery } from "@/lib/queries";
 
-const TABS = ["overview", "hardware", "network", "drift", "events", "services", "yaml", "metadata"] as const;
+const TABS = ["overview", "monitoring", "console", "hardware", "network", "drift", "events", "services", "yaml", "metadata"] as const;
 
 export const Route = createFileRoute("/vms/$ns/$name/")({
-  validateSearch: z.object({ tab: z.enum(TABS).optional() }),
+  validateSearch: z.object({ tab: z.enum(TABS).optional().catch(undefined) }),
   loader: ({ context, params }) => context.queryClient.ensureQueryData(vmQuery(params.ns, params.name)),
   pendingComponent: () => (
     <Page>
@@ -45,66 +48,15 @@ function VMDetailPage() {
   const { tab = "overview" } = Route.useSearch();
   const navigate = Route.useNavigate();
   const q = useQuery(vmQuery(ns, name));
+  const can = useCan();
   if (!q.data) return <Page>{q.error ? <ErrorState error={q.error} /> : <LoadingState />}</Page>;
   const vm = q.data;
   const s = summarizeVM(vm);
-  const task = vm.status?.activeTask;
-  const restartPending = vm.metadata.annotations?.[Annotations.restartPending];
 
   return (
     <Page>
-      <div>
-        <Button variant="ghost" size="sm" asChild className="text-muted-foreground -ml-2 mb-2">
-          <Link to="/vms">
-            <ArrowLeft /> Virtual machines
-          </Link>
-        </Button>
-        <PageHeader
-          icon={<Server className="size-5" />}
-          title={
-            <span className="flex flex-wrap items-center gap-2">
-              {s.displayName}
-              <PhaseBadge phase={s.phase} />
-              {s.paused && <PausedBadge />}
-            </span>
-          }
-          description={
-            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="font-mono">
-                {ns}/{name}
-              </span>
-              {s.primaryIP && <Copyable value={s.primaryIP} />}
-              {s.template && (
-                <Link to="/templates/$ns/$name" params={{ ns, name: s.template }} className="inline-flex items-center gap-1 hover:underline">
-                  <LayoutTemplate className="size-3.5" /> {s.template}
-                </Link>
-              )}
-            </span>
-          }
-          actions={<VMActions vm={vm} variant="buttons" />}
-        />
-      </div>
-
-      {(task || restartPending || s.converging) && (
-        <Alert className="border-info/30 bg-info/5">
-          <Loader2 className="text-info animate-spin" />
-          <AlertTitle>{task ? `Operation in progress: ${task.kind}` : restartPending ? "Restart in progress" : "Applying changes"}</AlertTitle>
-          <AlertDescription>
-            {task
-              ? `Prism Central task ${task.extId}${task.targetName ? ` for ${task.targetName}` : ""}.`
-              : restartPending
-                ? "Waiting for the VM to power off before powering it back on."
-                : `The controller is converging generation ${vm.metadata.generation} (applied: ${vm.status?.appliedGeneration ?? 0}).`}
-          </AlertDescription>
-        </Alert>
-      )}
-      {s.paused && (
-        <Alert className="border-warning/30 bg-warning/5">
-          <Info className="text-warning" />
-          <AlertTitle>Reconciliation paused</AlertTitle>
-          <AlertDescription>The operator ignores changes to this VM until reconciliation is resumed.</AlertDescription>
-        </Alert>
-      )}
+      <VMHero vm={vm} actions={<VMActions vm={vm} variant="buttons" />} />
+      <TaskProgressBanner vm={vm} />
       {s.phase === "Error" && s.readyMessage && (
         <Alert variant="destructive">
           <AlertTriangle />
@@ -117,6 +69,12 @@ function VMDetailPage() {
         <div className="scrollbar-thin -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="monitoring">
+              <Activity /> Monitoring
+            </TabsTrigger>
+            <TabsTrigger value="console">
+              <MonitorPlay /> Console
+            </TabsTrigger>
             <TabsTrigger value="hardware">Hardware</TabsTrigger>
             <TabsTrigger value="network">Network</TabsTrigger>
             <TabsTrigger value="drift">
@@ -130,6 +88,12 @@ function VMDetailPage() {
         </div>
         <TabsContent value="overview" className="mt-4">
           <Overview vm={vm} />
+        </TabsContent>
+        <TabsContent value="monitoring" className="mt-4">
+          <Monitoring ns={ns} name={name} provisioned={!!vm.status?.externalID} poweredOn={vm.status?.powerState === "On"} />
+        </TabsContent>
+        <TabsContent value="console" className="mt-4">
+          <VMConsole ns={ns} name={name} poweredOn={vm.status?.powerState === "On"} canOpen={can(ns, "virtualmachines", "update")} />
         </TabsContent>
         <TabsContent value="hardware" className="mt-4">
           <Hardware vm={vm} />

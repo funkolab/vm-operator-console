@@ -22,13 +22,15 @@ for (const vp of viewports)
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
     page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
     for (const t of targets) {
-      const [name, path] = t.split("=") as [string, string];
+      const i = t.indexOf("=");
+      const name = t.slice(0, i);
+      const path = t.slice(i + 1);
       errors.length = 0;
       await page.goto(base + path, { waitUntil: "networkidle" }).catch((e: Error) => errors.push(`goto: ${e.message}`));
       await page.waitForTimeout(Number(process.env.WAIT ?? 1200));
       const file = `${out}/${name}-${vp}-${scheme}.png`;
       await page.screenshot({ path: file, fullPage: process.env.FULL === "1" });
-      console.log(`${file} ${errors.length ? `ERRORS: ${errors.join(" | ").slice(0, 300)}` : "ok"}`);
+      console.log(`${file} ${errors.length ? `ERRORS: ${errors.join(" | ").slice(0, Number(process.env.ERRLEN ?? 300))}` : "ok"}`);
     }
     await ctx.close();
   }

@@ -12,7 +12,7 @@ import { useNamespace } from "@/lib/namespace";
 import { eventsQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/events")({
-  validateSearch: z.object({ type: z.enum(["all", "Warning", "Normal"]).optional(), kind: z.string().optional() }),
+  validateSearch: z.object({ type: z.enum(["all", "Warning", "Normal"]).optional().catch(undefined), kind: z.string().optional() }),
   component: EventsPage,
 });
 

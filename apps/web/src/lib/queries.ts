@@ -1,4 +1,4 @@
-import type { CatalogKind, ResourceName, Verb } from "@console/shared";
+import type { CatalogKind, MetricRange, ResourceName, Verb } from "@console/shared";
 import { keepPreviousData, queryOptions, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./api";
 import { ALL } from "./namespace";
@@ -127,6 +127,56 @@ export const catalogQuery = (ns: string, context: string | undefined, kind: Cata
     queryFn: () => unwrap(api.namespaces[":ns"].contexts[":name"].catalog[":kind"].$get({ param: { ns, name: context as string, kind }, query: {} })),
     enabled: !!ns && ns !== ALL && !!context,
     staleTime: 5 * 60_000,
+    retry: false,
+  });
+
+export const vmMetricsQuery = (ns: string, name: string, range: MetricRange, enabled = true) =>
+  queryOptions({
+    queryKey: ["vm-metrics", ns, name, range],
+    queryFn: () => unwrap(api.namespaces[":ns"].vms[":name"].metrics.$get({ param: { ns, name }, query: { range } })),
+    refetchInterval: range === "1h" ? 30_000 : 120_000,
+    placeholderData: keepPreviousData,
+    enabled,
+    retry: false,
+  });
+
+export const vmPlacementQuery = (ns: string, name: string, enabled = true) =>
+  queryOptions({
+    queryKey: ["vm-placement", ns, name],
+    queryFn: () => unwrap(api.namespaces[":ns"].vms[":name"].placement.$get({ param: { ns, name } })),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    enabled,
+    retry: false,
+  });
+
+export const vmTaskQuery = (ns: string, name: string, enabled = true) =>
+  queryOptions({
+    queryKey: ["vm-task", ns, name],
+    queryFn: () => unwrap(api.namespaces[":ns"].vms[":name"].task.$get({ param: { ns, name } })),
+    refetchInterval: 2_500,
+    enabled,
+    retry: false,
+  });
+
+export const infrastructureQuery = (ns: string, context: string, enabled = true) =>
+  queryOptions({
+    queryKey: ["infrastructure", ns, context],
+    queryFn: () => unwrap(api.namespaces[":ns"].contexts[":name"].infrastructure.$get({ param: { ns, name: context } })),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    enabled,
+    retry: false,
+  });
+
+export const topConsumersQuery = (scope: string) =>
+  queryOptions({
+    queryKey: ["top-consumers", scope],
+    queryFn: () => unwrap(api.insights.top.$get({ query: scope === ALL ? {} : { namespace: scope } })),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
     retry: false,
   });
 

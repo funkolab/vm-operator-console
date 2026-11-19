@@ -5,28 +5,32 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-const PHASE_STYLE: Record<VMPhase, { cls: string; spin?: boolean }> = {
-  Running: { cls: "bg-success/12 text-success border-success/25" },
-  Stopped: { cls: "bg-muted text-muted-foreground border-border" },
-  Pending: { cls: "bg-muted text-muted-foreground border-border", spin: true },
-  Provisioning: { cls: "bg-info/12 text-info border-info/25", spin: true },
-  Starting: { cls: "bg-info/12 text-info border-info/25", spin: true },
-  Stopping: { cls: "bg-warning/15 text-warning border-warning/30", spin: true },
-  Restarting: { cls: "bg-info/12 text-info border-info/25", spin: true },
-  Updating: { cls: "bg-info/12 text-info border-info/25", spin: true },
-  Deleting: { cls: "bg-destructive/10 text-destructive border-destructive/25", spin: true },
-  Degraded: { cls: "bg-warning/15 text-warning border-warning/30" },
-  Error: { cls: "bg-destructive/10 text-destructive border-destructive/25" },
-  Unknown: { cls: "bg-muted text-muted-foreground border-border" },
+export const PHASE_STYLE: Record<VMPhase, { cls: string; dot: string; spin?: boolean; pulse?: boolean }> = {
+  Running: { cls: "bg-success/10 text-success ring-success/25", dot: "bg-success", pulse: true },
+  Stopped: { cls: "bg-muted text-muted-foreground ring-border", dot: "bg-muted-foreground/60" },
+  Pending: { cls: "bg-muted text-muted-foreground ring-border", dot: "bg-muted-foreground", spin: true },
+  Provisioning: { cls: "bg-info/10 text-info ring-info/25", dot: "bg-info", spin: true },
+  Starting: { cls: "bg-info/10 text-info ring-info/25", dot: "bg-info", spin: true },
+  Stopping: { cls: "bg-warning/12 text-warning ring-warning/30", dot: "bg-warning", spin: true },
+  Restarting: { cls: "bg-info/10 text-info ring-info/25", dot: "bg-info", spin: true },
+  Updating: { cls: "bg-violet/10 text-violet ring-violet/25", dot: "bg-violet", spin: true },
+  Deleting: { cls: "bg-destructive/10 text-destructive ring-destructive/25", dot: "bg-destructive", spin: true },
+  Degraded: { cls: "bg-warning/12 text-warning ring-warning/30", dot: "bg-warning" },
+  Error: { cls: "bg-destructive/10 text-destructive ring-destructive/25", dot: "bg-destructive" },
+  Unknown: { cls: "bg-muted text-muted-foreground ring-border", dot: "bg-muted-foreground/60" },
 };
 
 export function PhaseBadge({ phase, className, title }: { phase: VMPhase; className?: string; title?: string }) {
   const s = PHASE_STYLE[phase] ?? PHASE_STYLE.Unknown;
   const badge = (
-    <Badge variant="outline" className={cn("gap-1.5 font-medium", s.cls, className)}>
-      {s.spin ? <Loader2 className="size-3 animate-spin" /> : <span className="size-1.5 rounded-full bg-current" />}
+    <span className={cn("inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset", s.cls, className)}>
+      {s.spin ? (
+        <Loader2 className="size-3 animate-spin" />
+      ) : (
+        <span className={cn("size-1.5 rounded-full", s.dot, s.pulse && "animate-pulse-ring text-success")} />
+      )}
       {phase}
-    </Badge>
+    </span>
   );
   if (!title) return badge;
   return (
