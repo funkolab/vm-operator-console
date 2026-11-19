@@ -4,6 +4,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Copy, Download, Pencil, Rocket } from "lucide-react";
 import { useState } from "react";
 import { stringify } from "yaml";
+import { z } from "zod";
 import { ButtonLink } from "@/components/button-link";
 import { YamlEditor } from "@/components/lazy";
 import { DescriptionList, EmptyState, ErrorState, LoadingState, Page, PageHeader, Section } from "@/components/page";
@@ -20,6 +21,7 @@ import { downloadText, formatDate, relativeTime } from "@/lib/format";
 import { templateQuery, templateVMsQuery, useCan } from "@/lib/queries";
 
 export const Route = createFileRoute("/templates/$ns/$name/")({
+  validateSearch: z.object({ deploy: z.coerce.number().optional().catch(undefined) }),
   loader: ({ context, params }) => context.queryClient.ensureQueryData(templateQuery(params.ns, params.name)),
   pendingComponent: () => (
     <Page>
@@ -39,7 +41,7 @@ function TemplateDetailPage() {
   const can = useCan();
   const q = useQuery(templateQuery(ns, name));
   const vms = useQuery(templateVMsQuery(ns, name));
-  const [deploy, setDeploy] = useState(false);
+  const [deploy, setDeploy] = useState(Route.useSearch().deploy === 1);
   const [dup, setDup] = useState(false);
   if (!q.data) return <Page>{q.error ? <ErrorState error={q.error} /> : <LoadingState />}</Page>;
   const t = q.data;

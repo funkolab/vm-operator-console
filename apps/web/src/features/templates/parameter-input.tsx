@@ -29,7 +29,14 @@ export function ParameterInput({
   showError?: boolean;
 }) {
   const error = showError ? checkParameterValue(param, value) : undefined;
-  const range = param.min !== undefined || param.max !== undefined ? `Between ${param.min ?? "—"} and ${param.max ?? "—"}` : undefined;
+  const range =
+    param.min !== undefined && param.max !== undefined
+      ? `Between ${param.min} and ${param.max}`
+      : param.min !== undefined
+        ? `At least ${param.min}`
+        : param.max !== undefined
+          ? `At most ${param.max}`
+          : undefined;
   return (
     <Field label={param.label || param.name} required={param.required} error={error} hint={param.description ?? range}>
       {(id) => {

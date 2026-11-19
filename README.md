@@ -17,6 +17,10 @@ It manages the operator's Custom Resources — `VirtualMachine`,
 | Virtual machines | VM detail |
 |---|---|
 | ![Virtual machines](docs/screenshots/vms.png) | ![VM detail](docs/screenshots/vm-detail.png) |
+| **Monitoring** | **In-browser console** |
+| ![Monitoring](docs/screenshots/monitoring.png) | ![Console](docs/screenshots/console.png) |
+| **Infrastructure** | **Insights** |
+| ![Infrastructure](docs/screenshots/infrastructure.png) | ![Insights](docs/screenshots/insights.png) |
 | **Templates** | **Deploy from a template** |
 | ![Templates](docs/screenshots/templates.png) | ![Deploy from a template](docs/screenshots/deploy-template.png) |
 | **Dark theme** | |
@@ -26,9 +30,14 @@ It manages the operator's Custom Resources — `VirtualMachine`,
 
 | Area | Capabilities |
 |---|---|
-| Dashboard | KPIs (VMs, health, Prism Central connectivity, services), capacity (vCPU/memory/storage), status and per-cluster charts, “needs attention” list, recent activity |
-| Virtual machines | Sortable/filterable table with facets, saved column layout, search in URL, mobile card view, bulk actions (power, restart, labels, pause, delete), live updates |
-| VM detail | Overview, conditions, hardware (disks/CD-ROMs with observed sizes), network (NICs, MAC, assigned vs learned addresses), drift (with “Enforce”), events timeline, exposing services, YAML, labels/annotations |
+| Dashboard | Personal greeting with fleet health score, KPIs, capacity, live cluster utilization from Prism Central, top consumers with sparklines, “needs attention” list, recent activity |
+| Virtual machines | Table or card view with live CPU/memory, quick status tabs, facets, saved columns, search in URL, bulk actions (power, restart, labels, pause, delete), **compare two VMs** (side-by-side diff), **GitOps export** (clean multi-document YAML), live updates |
+| VM detail | Hero with live CPU/memory/IOPS, placement (cluster › host), overview, conditions, hardware, network, drift (with “Enforce”), events, services, YAML, metadata |
+| Monitoring | CPU, memory, IOPS, latency and throughput charts from Prism Central v4 stats (1h–7d), current host and live-migration capability |
+| Console | In-browser VNC console (noVNC) relayed through the server: Prism credentials never reach the browser; requires `update` on the VM; Ctrl+Alt+Del, fullscreen, clipboard paste |
+| Insights | **Rightsizing** from the 7-day p95 of CPU and active memory (shrink at most by half per step, grow before saturation) with one-click “apply in the editor”; reclaimable vCPU/memory; configuration hygiene findings |
+| Power schedules | Office hours, nightly or weekend shutdown presets, or custom rules with time zone; stored as an annotation on the VM (no CRD), executed by a leader-elected scheduler, recorded as Kubernetes Events |
+| Infrastructure | Map of Prism Central clusters and hosts with utilization rings, managed VMs highlighted on their host, health score and overcommit |
 | Lifecycle | Create (form or YAML) with live validation mirroring the CRD CEL rules and the operator's admission policies, edit with diff review, power on/off, restart (off→on orchestration), pause/resume reconciliation, clone (same or another namespace), delete with type-to-confirm |
 | Day-2 safety | Hot-plug vs power-off awareness (“power off as part of this change”), grow-only disks, immutable fields locked, explicit confirmation for data/boot disk deletion (sets the operator's opt-in annotations), optimistic concurrency |
 | Templates | Library (grid/list, tags, search, usage count), editor with **deploy-time parameters** (“Ask” chips on any field, typed: text, integer, quantity, enum, cluster/subnet/image/storage container refs), deploy 1–N VMs with name patterns (`web-{01..05}`), save an existing VM as template, duplicate, YAML import/export, traceability labels on VMs |
@@ -36,7 +45,8 @@ It manages the operator's Custom Resources — `VirtualMachine`,
 | Prism Central | Accounts = context + credential Secret + CA ConfigMap created atomically (Prism Central 7.6+ required, checked before creation), test connection, rotate credentials, edit endpoint/TLS, usage and safe delete |
 | Catalog | Read-only Prism Central v4 proxy feeding pickers for clusters, subnets, images, storage containers (free entry always possible) |
 | VM services | ClusterIP / headless / LoadBalancer, label selector with live preview of matching and eligible VMs, ports, TCP probing, endpoints view |
-| UX | Light/dark/system theme, ⌘K command palette, responsive layout, English UI |
+| Activity | Categorized timeline of operator and scheduler events with links to the resources; completion notifications for the operations you start (power, restart, create, update) |
+| UX | Light/dark/system theme, ⌘K command palette with contextual VM actions, keyboard shortcuts (`g v`, `g i`, `c`, `?`…), alert bell, responsive layout, English UI |
 
 ## Security model
 
@@ -58,6 +68,13 @@ Browser ──► Traefik (NKP) + remote-auth ──► console ──► kube-a
   NetworkPolicy allowing ingress from Traefik pods only; `auth.trustedProxies`
   adds a CIDR check. CSRF protection, strict CSP and secure headers are on.
 - Secret values (Prism passwords, API keys, cloud-init) are never returned to the browser.
+- Prism Central insights (metrics, placement, console) are read with the
+  context credentials only after the user is authorized to `get` the VM and the
+  context through impersonation; the console websocket additionally requires
+  `update` on the VM and a same-origin request.
+- Power schedules are opt-in annotations written by users who can patch the
+  VM; with `scheduler.enabled` the ServiceAccount gets `get/list/patch` on
+  VirtualMachines, `create` Events and a Lease for leader election.
 
 The chart provides aggregated end-user roles to bind to your groups:
 `vm-console-viewer`, `vm-console-operator`, `vm-console-admin` (templates and
@@ -193,6 +210,8 @@ helm upgrade --install vm-operator-console charts/vm-operator-console -n vm-cons
 | `AUTH_USER_HEADER` / `AUTH_GROUPS_HEADER` | `X-Forwarded-User` / `X-Forwarded-Groups` | Identity headers |
 | `AUTH_TRUSTED_PROXIES` | | CIDRs allowed to send identity headers |
 | `WATCH_NAMESPACES` | | Restrict candidate namespaces |
-| `PRISM_PROXY_ENABLED` / `PRISM_CACHE_TTL_SECONDS` | `true` / `120` | Catalog proxy |
+| `PRISM_PROXY_ENABLED` / `PRISM_CACHE_TTL_SECONDS` | `true` / `120` | Catalog proxy and insights |
+| `PRISM_MAX_CONCURRENCY` | `4` | Concurrent requests per Prism Central (429s are retried with backoff) |
+| `SCHEDULER_ENABLED` / `POD_NAMESPACE` | `true` / `default` | Power schedules and the namespace of their leader-election Lease |
 
 The configuration is validated with Zod at startup; invalid values abort with a clear message.
