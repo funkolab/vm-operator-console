@@ -2,9 +2,10 @@ import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
 import { Lock, ShieldAlert } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import { CommandPalette } from "@/components/layout/command-palette";
+import { CommandPalette, useGlobalShortcuts } from "@/components/layout/command-palette";
+import { ShortcutsDialog } from "@/components/layout/shortcuts-dialog";
 import { Topbar } from "@/components/layout/topbar";
 import { EmptyState, ErrorState, Spinner } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,9 @@ function RootLayout() {
   const me = useQuery(meQuery);
   const ns = useNamespace();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const openHelp = useCallback(() => setHelpOpen(true), []);
+  useGlobalShortcuts(openHelp);
   const [unauth, setUnauth] = useState(false);
   const accessible = me.data?.namespaces.map((n) => n.name) ?? [];
   const liveNamespaces = ns === ALL ? accessible : accessible.filter((n) => n === ns);
@@ -94,7 +98,8 @@ function RootLayout() {
           )}
         </main>
       </SidebarInset>
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onHelp={openHelp} />
+      <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} />
     </SidebarProvider>
   );
 }

@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api, errorMessage, unwrap } from "@/lib/api";
+import { followVM } from "@/lib/followups";
 import { useCan } from "@/lib/queries";
 import { SaveAsTemplateDialog } from "../templates/save-as-template-dialog";
 import { CloneDialog } from "./clone-dialog";
@@ -27,7 +28,10 @@ export function usePowerAction() {
     mutationFn: ({ ns, name, action }: { ns: string; name: string; action: PowerAction }) =>
       unwrap(api.namespaces[":ns"].vms[":name"].actions[":action"].$post({ param: { ns, name, action } })),
     onSuccess: (vm, v) => {
-      toast.success(`${LABEL[v.action]} requested for ${v.name}`);
+      toast.success(`${LABEL[v.action]} requested for ${v.name}`, {
+        description: v.action === "pause" || v.action === "resume" ? undefined : "You will be notified when it completes.",
+      });
+      if (v.action !== "pause" && v.action !== "resume") followVM(v.ns, v.name, LABEL[v.action].toLowerCase(), vm);
       qc.setQueryData(["vm", v.ns, v.name], vm);
     },
     onError: (e, v) => toast.error(`${LABEL[v.action]} failed: ${errorMessage(e)}`),

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { ErrorState, LoadingState, Page, PageHeader } from "@/components/page";
 import { VMForm } from "@/features/vms/vm-form";
 import { api, errorMessage, unwrap } from "@/lib/api";
+import { followVM } from "@/lib/followups";
 import { useNamespace } from "@/lib/namespace";
 import { useNamespacesWith, usePreferredNamespace, vmQuery } from "@/lib/queries";
 
@@ -45,6 +46,7 @@ function NewVMPage() {
     mutationFn: (vm: VirtualMachine) => unwrap(api.namespaces[":ns"].vms.$post({ param: { ns: vm.metadata.namespace as string }, query: {}, json: vm })),
     onSuccess: (vm) => {
       toast.success(`VM ${vm.metadata.name} created`);
+      followVM(vm.metadata.namespace as string, vm.metadata.name as string, "provisioning");
       void qc.invalidateQueries({ queryKey: ["vms"] });
       void navigate({ to: "/vms/$ns/$name", params: { ns: vm.metadata.namespace as string, name: vm.metadata.name as string } });
     },

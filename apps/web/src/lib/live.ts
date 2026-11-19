@@ -1,7 +1,8 @@
-import type { KubeObject, StreamMessage } from "@console/shared";
+import type { KubeObject, StreamMessage, VirtualMachine } from "@console/shared";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { basePath } from "./api";
+import { onVMUpdate } from "./followups";
 import { ALL } from "./namespace";
 
 export type LiveStatus = "connecting" | "live" | "offline";
@@ -81,6 +82,7 @@ export function useLiveUpdates(namespaces: string[]): LiveStatus {
       es.addEventListener("batch", (ev) => {
         const batch = JSON.parse((ev as MessageEvent).data) as StreamMessage[];
         for (const m of batch) {
+          if (m.kind === "virtualmachines" && m.type !== "DELETED") onVMUpdate(m.object as VirtualMachine);
           const listKey = LIST_KEY[m.kind];
           if (listKey) upsertLists(qc, listKey, m);
           const itemKey = ITEM_KEY[m.kind];

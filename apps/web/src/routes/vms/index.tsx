@@ -1,28 +1,46 @@
-import { formatBytes, summarizeVM, type VirtualMachine, VM_PHASES, type VMSummary } from "@console/shared";
+import { cleanVMForCopy, formatBytes, summarizeVM, type VirtualMachine, VM_PHASES, type VMSummary } from "@console/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertTriangle, LayoutGrid, LayoutTemplate, List, Pause, Play, Plus, RotateCcw, Server, Square, Tag, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Copy,
+  Download,
+  GitCompareArrows,
+  LayoutGrid,
+  LayoutTemplate,
+  List,
+  Pause,
+  Play,
+  Plus,
+  RotateCcw,
+  Server,
+  Square,
+  Tag,
+  Trash2,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { stringify } from "yaml";
 import { z } from "zod";
 import { ButtonLink } from "@/components/button-link";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CopyButton } from "@/components/copy-button";
 import { DataTable, facetFilterFn, SortHeader, selectColumn } from "@/components/data-table";
 import { KeyValueEditor } from "@/components/form";
+import { YamlDiff } from "@/components/lazy";
 import { EmptyState, ErrorState, LoadingState, Page, PageHeader } from "@/components/page";
 import { PausedBadge, PhaseBadge, PowerIcon } from "@/components/status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { VMActions } from "@/features/vms/actions";
 import { VMCard } from "@/features/vms/vm-card";
 import { api, errorMessage, unwrap } from "@/lib/api";
-import { age } from "@/lib/format";
+import { age, downloadText } from "@/lib/format";
 import { ALL, useNamespace } from "@/lib/namespace";
 import { useCan, useNamespacesWith, vmsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -364,6 +382,7 @@ function BulkActions({ rows, clear, can }: { rows: Row[]; clear: () => void; can
   const [confirm, setConfirm] = useState<null | "delete" | "stop" | "restart">(null);
   const [labels, setLabels] = useState(false);
   const [labelMap, setLabelMap] = useState<Record<string, string>>({});
+  const [compare, setCompare] = useState(false);
   const allowed = (verb: "patch" | "delete") => rows.every((r) => can(r.namespace, "virtualmachines", verb));
   const m = useMutation({
     mutationFn: (body: { action: "start" | "stop" | "restart" | "pause" | "resume" | "delete" | "label"; labels?: Record<string, string | null> }) =>
@@ -387,20 +406,35 @@ function BulkActions({ rows, clear, can }: { rows: Row[]; clear: () => void; can
       <Button size="sm" variant="outline" disabled={!allowed("patch")} onClick={() => setConfirm("restart")}>
         <RotateCcw /> Restart
       </Button>
+      <Button size="sm" variant="outline" disabled={rows.length !== 2} onClick={() => setCompare(true)} title="Select exactly two VMs">
+        <GitCompareArrows /> Compare
+      </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="outline" disabled={!allowed("patch")}>
+          <Button size="sm" variant="outline">
             More
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuItem onSelect={() => setLabels(true)}>
+          <DropdownMenuItem onSelect={() => downloadText(`virtualmachines-${rows.length}.yaml`, exportManifests(rows.map((r) => r.vm)))}>
+            <Download /> Export YAML (GitOps)
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={async () => {
+              await navigator.clipboard.writeText(exportManifests(rows.map((r) => r.vm)));
+              toast.success(`${rows.length} manifest(s) copied`);
+            }}
+          >
+            <Copy /> Copy YAML
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem disabled={!allowed("patch")} onSelect={() => setLabels(true)}>
             <Tag /> Edit labels
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => m.mutate({ action: "pause" })}>
+          <DropdownMenuItem disabled={!allowed("patch")} onSelect={() => m.mutate({ action: "pause" })}>
             <Pause /> Pause reconciliation
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => m.mutate({ action: "resume" })}>
+          <DropdownMenuItem disabled={!allowed("patch")} onSelect={() => m.mutate({ action: "resume" })}>
             <Play /> Resume reconciliation
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -424,6 +458,7 @@ function BulkActions({ rows, clear, can }: { rows: Row[]; clear: () => void; can
         }
         onConfirm={() => m.mutateAsync({ action: confirm as "delete" })}
       />
+      {compare && rows.length === 2 && <CompareDialog a={rows[0] as Row} b={rows[1] as Row} onOpenChange={setCompare} />}
       <Dialog open={labels} onOpenChange={setLabels}>
         <DialogContent>
           <DialogHeader>
@@ -446,5 +481,37 @@ function BulkActions({ rows, clear, can }: { rows: Row[]; clear: () => void; can
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/** Clean, re-appliable manifests for GitOps (no status, no server-managed metadata). */
+function exportManifests(vms: VirtualMachine[]): string {
+  return vms
+    .map((vm) => {
+      const clean = cleanVMForCopy(vm);
+      clean.metadata = { ...clean.metadata, name: vm.metadata.name, namespace: vm.metadata.namespace };
+      if (vm.spec.biosUUID) clean.spec.biosUUID = vm.spec.biosUUID;
+      return stringify(clean, { lineWidth: 0 });
+    })
+    .join("---\n");
+}
+
+function CompareDialog({ a, b, onOpenChange }: { a: Row; b: Row; onOpenChange: (o: boolean) => void }) {
+  const view = (r: Row) => stringify({ metadata: { labels: r.vm.metadata.labels }, spec: r.vm.spec }, { lineWidth: 0 });
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-5xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <GitCompareArrows className="size-5" /> Compare configurations
+          </DialogTitle>
+        </DialogHeader>
+        <div className="text-muted-foreground grid grid-cols-2 gap-4 text-sm">
+          <span className="truncate font-mono">{a.key}</span>
+          <span className="truncate font-mono">{b.key}</span>
+        </div>
+        <YamlDiff original={view(a)} modified={view(b)} />
+      </DialogContent>
+    </Dialog>
   );
 }

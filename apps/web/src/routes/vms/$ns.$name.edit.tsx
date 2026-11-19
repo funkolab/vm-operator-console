@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { VMForm } from "@/features/vms/vm-form";
 import { ApiError, api, errorMessage, unwrap } from "@/lib/api";
+import { followVM } from "@/lib/followups";
 import { vmQuery } from "@/lib/queries";
 
 /** Optional prefill (e.g. from a rightsizing recommendation). */
@@ -67,6 +68,7 @@ function EditVMPage() {
     onSuccess: (vm) => {
       qc.setQueryData(["vm", ns, name], vm);
       toast.success(`Changes to ${name} applied`);
+      followVM(ns, name, "update", vm);
       void navigate({ to: "/vms/$ns/$name", params: { ns, name } });
     },
     onError: (e) => toast.error(errorMessage(e)),
