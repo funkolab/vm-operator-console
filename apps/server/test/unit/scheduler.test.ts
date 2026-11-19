@@ -29,6 +29,9 @@ describe("PowerScheduler", () => {
     expect(web.metadata.annotations[SCHEDULE_STATE_ANNOTATION]).toBe("2026-11-19T20:00/stop");
     const paused = kube.store.get("virtualmachines/team-a/paused") as unknown as { spec: { powerState: string } };
     expect(paused.spec.powerState).toBe("On");
+    const ev = kube.calls.find((c) => c.verb === "create" && c.plural === "events")?.body as { reason: string; involvedObject: { name: string } };
+    expect(ev.reason).toBe("ScheduledPowerOff");
+    expect(ev.involvedObject.name).toBe("web");
     // Same window: nothing more happens even if the user powers the VM back on.
     web.spec.powerState = "On";
     await s.tick(new Date("2026-11-19T20:08:00Z"));

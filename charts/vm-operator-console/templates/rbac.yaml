@@ -57,6 +57,9 @@ rules:
   - apiGroups: [vmm.v4.nutanix.com]
     resources: [virtualmachines]
     verbs: [get, list, patch]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create]
   {{- end }}
   {{- if .Values.prismProxy.enabled }}
   - apiGroups: [""]

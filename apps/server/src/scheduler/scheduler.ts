@@ -134,11 +134,38 @@ export class PowerScheduler {
         );
         log.info("Applied power schedule", { vm: key, action: due.rule.action, rule: due.key });
         this.record(key, due.rule.action, true);
+        await this.event(
+          vm,
+          due.rule.action === "start" ? "ScheduledPowerOn" : "ScheduledPowerOff",
+          `Power schedule: ${due.rule.action === "start" ? "power on" : "power off"} at ${due.rule.at} (${schedule.timezone})`,
+        );
       } catch (e) {
         if (isConflict(e)) continue; // retried on the next tick with a fresh object
         log.warn("Power schedule failed", { vm: key, error: String(e) });
         this.record(key, due.rule.action, false, String(e));
       }
+    }
+  }
+
+  /** Best effort: an Event on the VM makes scheduled actions visible in Activity and on the VM. */
+  private async event(vm: VirtualMachine, reason: string, message: string) {
+    const now = new Date().toISOString();
+    try {
+      await this.sa.create(R.events, vm.metadata.namespace, {
+        apiVersion: "v1",
+        kind: "Event",
+        metadata: { generateName: `${vm.metadata.name}.schedule-`, namespace: vm.metadata.namespace },
+        involvedObject: { apiVersion: vm.apiVersion, kind: "VirtualMachine", name: vm.metadata.name, namespace: vm.metadata.namespace, uid: vm.metadata.uid },
+        reason,
+        message,
+        type: "Normal",
+        source: { component: "vm-operator-console" },
+        firstTimestamp: now,
+        lastTimestamp: now,
+        count: 1,
+      });
+    } catch (e) {
+      log.debug("Cannot record schedule event", { error: String(e) });
     }
   }
 

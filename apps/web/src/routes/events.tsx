@@ -38,8 +38,8 @@ function EventsPage() {
     <Page>
       <PageHeader
         icon={<Activity className="size-5" />}
-        title="Events"
-        description="Kubernetes events emitted by vm-operator for VMs, services and Prism Central contexts (retained ~1 hour)."
+        title="Activity"
+        description="What happened to your VMs, services and Prism Central accounts: operator events and scheduled power actions (retained ~1 hour)."
       />
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-full sm:w-72">

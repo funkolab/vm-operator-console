@@ -176,7 +176,7 @@ function Crumbs() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const rel = basePath && pathname.startsWith(basePath) ? pathname.slice(basePath.length) : pathname;
   const parts = rel.split("/").filter(Boolean);
-  if (!parts.length) return <span className="text-sm font-medium">Dashboard</span>;
+  if (!parts.length) return <span className="hidden text-sm font-medium md:inline">Dashboard</span>;
   const items: { label: string; to?: string; mono?: boolean }[] = [];
   const section = parts[0] as string;
   items.push({ label: SEGMENT_LABEL[section] ?? section, to: parts.length > 1 ? `/${section}` : undefined });
@@ -301,7 +301,13 @@ function AlertsBell() {
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   return (
-    <Button variant="ghost" size="icon" className="size-9" aria-label="Toggle theme" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
+    <Button
+      variant="ghost"
+      size="icon"
+      className="hidden size-9 sm:inline-flex"
+      aria-label="Toggle theme"
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+    >
       <Sun className="size-[18px] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
       <Moon className="absolute size-[18px] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
     </Button>
@@ -310,13 +316,13 @@ function ThemeToggle() {
 
 export function Topbar({ onSearch }: { onSearch: () => void }) {
   return (
-    <header className="bg-background/75 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-3 backdrop-blur-xl sm:px-4">
+    <header className="bg-background/75 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-1.5 border-b px-2.5 sm:gap-2 backdrop-blur-xl sm:px-4">
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-1 !h-5" />
       <NamespaceSwitcher />
       <Separator orientation="vertical" className="mx-1 hidden !h-5 md:block" />
       <Crumbs />
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
         <Button
           variant="outline"
           size="sm"

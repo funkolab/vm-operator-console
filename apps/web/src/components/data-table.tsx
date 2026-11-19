@@ -65,7 +65,7 @@ export function SortHeader({ label, column }: { label: string; column: { getIsSo
   return (
     <button
       type="button"
-      className="hover:text-foreground -ml-1 inline-flex items-center gap-1 rounded px-1 py-0.5"
+      className="hover:text-foreground -ml-1 inline-flex items-center gap-1 rounded px-1 py-0.5 uppercase"
       onClick={() => column.toggleSorting(s === "asc")}
     >
       {label}
