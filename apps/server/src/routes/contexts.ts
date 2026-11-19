@@ -22,7 +22,10 @@ export function contextRoutes(deps: Deps) {
     })
     .post("/namespaces/:ns/contexts", zv("param", NamespaceParam), zv("json", PrismAccountRequestSchema), async (c) => {
       const { ns } = c.req.valid("param");
-      return c.json(await deps.contexts.createAccount(userClient(c, deps), ns, c.req.valid("json"), userName(c)), 201);
+      const k = userClient(c, deps);
+      const req = c.req.valid("json");
+      await deps.prism.assertSupported(k, ns, req);
+      return c.json(await deps.contexts.createAccount(k, ns, req, userName(c)), 201);
     })
     .post("/contexts/test", zv("json", TestConnectionSchema), async (c) => {
       const b = c.req.valid("json");

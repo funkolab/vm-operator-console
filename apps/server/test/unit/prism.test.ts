@@ -1,5 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { loadConfig } from "../../src/config";
+import { setLogLevel } from "../../src/log";
 import { PrismClient } from "../../src/prism/client";
+import { PrismService } from "../../src/prism/service";
+import { FakeKube } from "./fake-kube";
 
 // Minimal mock of the Prism Central v4 REST API over TLS (self-signed).
 let server: ReturnType<typeof Bun.serve>;
@@ -71,5 +75,42 @@ describe("PrismClient", () => {
 
   test("verifies TLS in Secure mode", async () => {
     await expect(new PrismClient(creds({ insecure: false })).version()).rejects.toThrow(/Cannot reach Prism Central/);
+  });
+});
+
+describe("PrismService minimum version", () => {
+  setLogLevel("error");
+  const kube = new FakeKube();
+  const service = new PrismService(kube, loadConfig({ AUTH_MODE: "traefik" }));
+  const account = (credential: object) => ({
+    name: "pc",
+    address: "localhost",
+    port: server.port as number,
+    tlsMode: "Insecure" as const,
+    credential: credential as { mode: "basic"; username: string; password: string },
+  });
+
+  test("accepts a Prism Central 7.6", async () => {
+    expect(await service.assertSupported(kube, "team-a", account({ mode: "basic", username: "admin", password: "pw" }))).toBe("pc.7.6");
+  });
+
+  test("refuses an older Prism Central", async () => {
+    await expect(service.assertSupported(kube, "team-a", account({ mode: "apiKey", apiKey: "old-pc" }))).rejects.toThrow(/pc\.2024\.2 is not supported/);
+  });
+
+  test("checks the version with an existing credential Secret", async () => {
+    kube.seed("secrets", { metadata: { name: "old-creds", namespace: "team-a" }, data: { apiKey: btoa("old-pc") } });
+    await expect(service.assertSupported(kube, "team-a", account({ mode: "existing", secretName: "old-creds" }))).rejects.toThrow(/not supported/);
+  });
+
+  test("refuses when the version cannot be verified", async () => {
+    await expect(service.assertSupported(kube, "team-a", account({ mode: "basic", username: "admin", password: "wrong" }))).rejects.toThrow(
+      /Cannot verify the Prism Central version/,
+    );
+  });
+
+  test("connection tests report unsupported versions", async () => {
+    const res = await service.test(creds({ username: undefined, apiKey: "old-pc" }));
+    expect(res).toMatchObject({ ok: false, pcVersion: "pc.2024.2" });
   });
 });

@@ -1,4 +1,4 @@
-import { DNS1123_LABEL, type TestConnectionResult } from "@console/shared";
+import { DNS1123_LABEL, MIN_PC_VERSION, type TestConnectionResult } from "@console/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CheckCircle2, KeyRound, Lock, PlugZap, ServerCog, XCircle } from "lucide-react";
@@ -87,7 +87,7 @@ function NewContextPage() {
         title="Add Prism Central account"
         description="Creates a NutanixPrismContext, its credential Secret and CA bundle with your permissions."
       />
-      <SectionCard icon={<ServerCog className="size-4" />} title="Endpoint">
+      <SectionCard icon={<ServerCog className="size-4" />} title="Endpoint" description={`Prism Central ${MIN_PC_VERSION} or later is required`}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Name" required error={submitted && !DNS1123_LABEL.test(name) ? "Lowercase letters, digits and '-'" : undefined}>
             {(id) => <Input id={id} value={name} placeholder="pc-prod" onChange={(e) => setName(e.target.value.toLowerCase())} />}
@@ -171,7 +171,7 @@ function NewContextPage() {
                 <span className={`flex items-center gap-1.5 text-sm ${test.ok ? "text-success" : "text-destructive"}`}>
                   {test.ok ? <CheckCircle2 className="size-4" /> : <XCircle className="size-4" />}
                   {test.message}
-                  {test.pcVersion && ` · ${test.pcVersion}`}
+                  {test.ok && test.pcVersion && ` · ${test.pcVersion}`}
                   {test.latencyMs !== undefined && <span className="text-muted-foreground">({test.latencyMs} ms)</span>}
                 </span>
               )}

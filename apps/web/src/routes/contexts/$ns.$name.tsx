@@ -114,7 +114,7 @@ function ContextDetailPage() {
         >
           {test.data.ok ? <CheckCircle2 className="size-4" /> : <XCircle className="size-4" />}
           {test.data.message}
-          {test.data.pcVersion && ` · ${test.data.pcVersion}`}
+          {test.data.ok && test.data.pcVersion && ` · ${test.data.pcVersion}`}
           {test.data.latencyMs !== undefined && <span className="text-muted-foreground">({test.data.latencyMs} ms)</span>}
         </div>
       )}

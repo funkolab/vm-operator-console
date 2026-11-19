@@ -1,4 +1,14 @@
-import type { CatalogKind, CatalogResponse, NutanixPrismContext, Secret, TestConnectionResult } from "@console/shared";
+import {
+  type CatalogKind,
+  type CatalogResponse,
+  isSupportedPcVersion,
+  type NutanixPrismContext,
+  type PrismAccountRequestSchema,
+  type Secret,
+  type TestConnectionResult,
+  unsupportedPcVersionMessage,
+} from "@console/shared";
+import type { z } from "zod";
 import type { Config } from "../config";
 import { ApiError } from "../errors";
 import { type Identity, type KubeClient, R } from "../k8s/client";
@@ -7,6 +17,8 @@ import { log } from "../log";
 import { PrismClient, type PrismCredentials, PrismError } from "./client";
 
 const decode = (s?: string) => (s ? Buffer.from(s, "base64").toString("utf8") : undefined);
+
+type PrismAccountInput = z.output<typeof PrismAccountRequestSchema>;
 
 /**
  * Prism Central catalog proxy. The user must be able to `get` the
@@ -78,12 +90,60 @@ export class PrismService {
     const started = Date.now();
     try {
       const version = await new PrismClient(creds, this.cfg.PRISM_REQUEST_TIMEOUT_MS).version();
+      if (!isSupportedPcVersion(version))
+        return { ok: false, message: unsupportedPcVersionMessage(version), pcVersion: version, latencyMs: Date.now() - started };
       return { ok: true, message: "Connection successful", pcVersion: version, latencyMs: Date.now() - started };
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       log.warn("Prism Central connection test failed", { address: creds.address, port: creds.port, error: message });
       return { ok: false, message, latencyMs: Date.now() - started };
     }
+  }
+
+  /**
+   * Refuses a new account whose Prism Central is unreachable or older than
+   * MIN_PC_VERSION. An existing Secret / CA ConfigMap is read with the user's
+   * identity, so this never reveals objects the user cannot read.
+   */
+  async assertSupported(user: KubeClient, ns: string, req: PrismAccountInput): Promise<string | undefined> {
+    let creds: Pick<PrismCredentials, "username" | "password" | "apiKey">;
+    if (req.credential.mode === "existing") {
+      const credNs = req.credential.secretNamespace || ns;
+      let secret: Secret;
+      try {
+        secret = await user.get<Secret>(R.secrets, credNs, req.credential.secretName);
+      } catch (e) {
+        if (isNotFound(e)) throw new ApiError(422, "CredentialNotFound", `Credential secret ${credNs}/${req.credential.secretName} not found`);
+        throw e;
+      }
+      creds = { username: decode(secret.data?.username), password: decode(secret.data?.password), apiKey: decode(secret.data?.apiKey) };
+    } else {
+      creds = req.credential.mode === "basic" ? { username: req.credential.username, password: req.credential.password } : { apiKey: req.credential.apiKey };
+    }
+    let caBundle = req.caBundle;
+    if (req.tlsMode === "Secure" && !caBundle && req.caBundleRef) {
+      try {
+        caBundle = (await user.get<{ data?: Record<string, string> }>(R.configmaps, ns, req.caBundleRef)).data?.["ca.crt"];
+      } catch (e) {
+        if (isNotFound(e)) throw new ApiError(422, "CABundleNotFound", `CA bundle ConfigMap ${ns}/${req.caBundleRef} not found`);
+        throw e;
+      }
+    }
+    let version: string | undefined;
+    try {
+      version = await new PrismClient(
+        { address: req.address, port: req.port, insecure: req.tlsMode === "Insecure", caBundle, ...creds },
+        this.cfg.PRISM_REQUEST_TIMEOUT_MS,
+      ).version();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      throw new ApiError(422, "PrismCentralUnreachable", `Cannot verify the Prism Central version: ${message}`);
+    }
+    if (!isSupportedPcVersion(version)) {
+      log.warn("Refused unsupported Prism Central", { ns, name: req.name, address: req.address, version });
+      throw new ApiError(422, "PrismCentralUnsupported", unsupportedPcVersionMessage(version));
+    }
+    return version;
   }
 
   async testContext(user: KubeClient, ns: string, name: string): Promise<TestConnectionResult> {

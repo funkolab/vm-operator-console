@@ -3,6 +3,7 @@ export * from "./constants";
 export * from "./crd";
 export * from "./guest-scripts";
 export * from "./k8s";
+export * from "./pc-version";
 export * from "./pointer";
 export * from "./quantity";
 export * from "./rules";
