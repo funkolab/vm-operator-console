@@ -22,15 +22,17 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  */
 export async function pickRef(scope: Locator, kind: string, name: string) {
   await scope
-    .getByRole("combobox", { name: new RegExp(`^Select an? ${escapeRe(kind)}`) })
+    // Accessible name is the field label when linked, else the placeholder text.
+    .getByRole("combobox", { name: new RegExp(escapeRe(kind), "i") })
     .first()
     .click();
-  const page = scope.page();
-  await page.locator("[cmdk-input]").fill(name);
-  await page
+  const popup = scope.page().locator('[data-slot="popover-content"][data-state="open"]');
+  await popup.locator("[cmdk-input]").fill(name);
+  await popup
     .getByRole("option", { name: new RegExp(`^(Use “)?${escapeRe(name)}`) })
     .first()
     .click();
+  await popup.waitFor({ state: "detached" });
 }
 
 export function uniq(prefix: string) {

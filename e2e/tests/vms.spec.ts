@@ -88,7 +88,7 @@ test.describe("Virtual machines", () => {
   test("live updates refresh the list without reload", async ({ browser, request, baseURL }) => {
     const page = await pageAs(browser, ALICE, baseURL);
     await page.goto("/vms");
-    await expect(page.getByText("Live updates", { exact: true })).toBeVisible();
+    await expect(page.getByText("Live — streaming changes", { exact: true })).toBeVisible();
     const name = uniq("live");
     const vm = await (await request.get("/api/namespaces/team-a/vms/web-02", { headers: ALICE })).json();
     const res = await request.post(`/api/namespaces/team-a/vms/web-02/clone`, { headers: { ...ALICE, origin: ORIGIN }, data: { name } });
