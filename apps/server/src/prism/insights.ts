@@ -1,5 +1,7 @@
 import {
+  adviseRightsizing,
   type ConsumerSample,
+  type FleetRecommendations,
   type InfraCluster,
   type Infrastructure,
   type InfraVM,
@@ -7,7 +9,9 @@ import {
   type MetricPoint,
   type MetricRange,
   type NutanixPrismContext,
+  parseQuantity,
   ppmToPercent,
+  type RightsizingAdvice,
   summarizeVM,
   type TaskProgress,
   type TopConsumers,
@@ -324,5 +328,52 @@ export class InsightsService {
     );
     const items = results.filter((r): r is ConsumerSample => !!r).sort((a, b) => (b.cpu ?? 0) - (a.cpu ?? 0));
     return { available: items.length > 0 || running.length === 0, message: items.length ? undefined : "Metrics unavailable", items: items.slice(0, limit) };
+  }
+
+  /** Rightsizing advice for one VM, from 7 days of hourly samples. */
+  async rightsizing(user: KubeClient, ns: string, name: string): Promise<RightsizingAdvice & { available: boolean; message?: string }> {
+    const m = await this.metrics(user, ns, name, "7d");
+    const vm = await user.get<VirtualMachine>(R.virtualmachines, ns, name);
+    const c = vm.spec.compute;
+    const per = (c?.numCoresPerSocket ?? 1) * (c?.numThreadsPerCore ?? 1);
+    const vcpus = (c?.numSockets ?? 1) * per;
+    const memGiB = Math.max(1, Math.round((parseQuantity(c?.memorySize ?? 0) || 0) / 2 ** 30));
+    const advice = adviseRightsizing(m.points, vcpus, memGiB, per);
+    return { ...advice, available: m.available, message: m.message };
+  }
+
+  /** Rightsizing across the user's running VMs (bounded to 40 VMs). */
+  async fleetRecommendations(user: KubeClient, vms: VirtualMachine[]): Promise<FleetRecommendations> {
+    const candidates = vms.filter((v) => v.status?.externalID && v.status?.powerState === "On").slice(0, 40);
+    const out = await Promise.all(
+      candidates.map(async (vm) => {
+        try {
+          const advice = await this.rightsizing(user, vm.metadata.namespace as string, vm.metadata.name as string);
+          if (!advice.available) return undefined;
+          return {
+            namespace: vm.metadata.namespace as string,
+            name: vm.metadata.name as string,
+            displayName: vm.spec.displayName || (vm.metadata.name as string),
+            advice,
+          };
+        } catch {
+          return undefined;
+        }
+      }),
+    );
+    const analyzed = out.filter((x) => !!x);
+    const items = analyzed.filter((x) => x && (x.advice.verdict === "oversized" || x.advice.verdict === "undersized")) as FleetRecommendations["items"];
+    items.sort((a, b) => b.advice.delta.vcpus * 4 + b.advice.delta.memoryGiB - (a.advice.delta.vcpus * 4 + a.advice.delta.memoryGiB));
+    const reclaimable = items.reduce(
+      (acc, i) => ({ vcpus: acc.vcpus + Math.max(0, i.advice.delta.vcpus), memoryGiB: acc.memoryGiB + Math.max(0, i.advice.delta.memoryGiB) }),
+      { vcpus: 0, memoryGiB: 0 },
+    );
+    return {
+      available: candidates.length === 0 || analyzed.length > 0,
+      analyzed: analyzed.length,
+      items,
+      reclaimable,
+      message: analyzed.length ? undefined : candidates.length ? "Metrics unavailable" : undefined,
+    };
   }
 }

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as InfrastructureRouteImport } from './routes/infrastructure'
+import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as ContextsIndexRouteImport } from './routes/contexts/index'
 import { Route as ContextsNewRouteImport } from './routes/contexts/new'
 import { Route as GuestScriptsIndexRouteImport } from './routes/guest-scripts/index'
@@ -42,6 +43,11 @@ const EventsRoute = EventsRouteImport.update({
 const InfrastructureRoute = InfrastructureRouteImport.update({
   id: '/infrastructure',
   path: '/infrastructure',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsightsRoute = InsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContextsIndexRoute = ContextsIndexRouteImport.update({
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/events': typeof EventsRoute
   '/infrastructure': typeof InfrastructureRoute
+  '/insights': typeof InsightsRoute
   '/contexts/new': typeof ContextsNewRoute
   '/services/new': typeof ServicesNewRoute
   '/templates/new': typeof TemplatesNewRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/events': typeof EventsRoute
   '/infrastructure': typeof InfrastructureRoute
+  '/insights': typeof InsightsRoute
   '/contexts/new': typeof ContextsNewRoute
   '/services/new': typeof ServicesNewRoute
   '/templates/new': typeof TemplatesNewRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/events': typeof EventsRoute
   '/infrastructure': typeof InfrastructureRoute
+  '/insights': typeof InsightsRoute
   '/contexts/new': typeof ContextsNewRoute
   '/services/new': typeof ServicesNewRoute
   '/templates/new': typeof TemplatesNewRoute
@@ -195,6 +204,7 @@ export interface FileRouteTypes {
     | '/'
     | '/events'
     | '/infrastructure'
+    | '/insights'
     | '/contexts/new'
     | '/services/new'
     | '/templates/new'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/'
     | '/events'
     | '/infrastructure'
+    | '/insights'
     | '/contexts/new'
     | '/services/new'
     | '/templates/new'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/'
     | '/events'
     | '/infrastructure'
+    | '/insights'
     | '/contexts/new'
     | '/services/new'
     | '/templates/new'
@@ -259,6 +271,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EventsRoute: typeof EventsRoute
   InfrastructureRoute: typeof InfrastructureRoute
+  InsightsRoute: typeof InsightsRoute
   ContextsNewRoute: typeof ContextsNewRoute
   ServicesNewRoute: typeof ServicesNewRoute
   TemplatesNewRoute: typeof TemplatesNewRoute
@@ -298,6 +311,13 @@ declare module '@tanstack/react-router' {
       path: '/infrastructure'
       fullPath: '/infrastructure'
       preLoaderRoute: typeof InfrastructureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights': {
+      id: '/insights'
+      path: '/insights'
+      fullPath: '/insights'
+      preLoaderRoute: typeof InsightsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contexts/': {
@@ -419,6 +439,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EventsRoute: EventsRoute,
   InfrastructureRoute: InfrastructureRoute,
+  InsightsRoute: InsightsRoute,
   ContextsNewRoute: ContextsNewRoute,
   ServicesNewRoute: ServicesNewRoute,
   TemplatesNewRoute: TemplatesNewRoute,

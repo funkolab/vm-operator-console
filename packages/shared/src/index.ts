@@ -7,6 +7,7 @@ export * from "./k8s";
 export * from "./pc-version";
 export * from "./pointer";
 export * from "./quantity";
+export * from "./rightsizing";
 export * from "./rules";
 export * from "./templates";
 export * from "./vm";

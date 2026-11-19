@@ -146,3 +146,18 @@ export interface TopConsumers {
 
 /** Converts parts-per-million to a percentage with one decimal. */
 export const ppmToPercent = (ppm?: number) => (ppm === undefined || ppm === null || Number.isNaN(ppm) ? undefined : Math.round(ppm / 1000) / 10);
+
+export interface FleetRecommendation {
+  namespace: string;
+  name: string;
+  displayName: string;
+  advice: import("./rightsizing").RightsizingAdvice;
+}
+
+export interface FleetRecommendations {
+  available: boolean;
+  message?: string;
+  analyzed: number;
+  items: FleetRecommendation[];
+  reclaimable: { vcpus: number; memoryGiB: number };
+}

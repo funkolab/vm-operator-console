@@ -166,6 +166,7 @@ const SEGMENT_LABEL: Record<string, string> = {
   contexts: "Prism Central",
   events: "Activity",
   infrastructure: "Infrastructure",
+  insights: "Insights",
   new: "New",
   edit: "Edit",
 };

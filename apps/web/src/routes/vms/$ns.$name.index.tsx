@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EventList } from "@/features/events/event-list";
 import { VMActions } from "@/features/vms/actions";
 import { Monitoring } from "@/features/vms/monitoring";
+import { RightsizingPanel } from "@/features/vms/rightsizing-panel";
 import { VMConsole } from "@/features/vms/vm-console";
 import { TaskProgressBanner, VMHero } from "@/features/vms/vm-hero";
 import { api, errorMessage, unwrap } from "@/lib/api";
@@ -199,9 +200,12 @@ function Overview({ vm }: { vm: VirtualMachine }) {
             </div>
           )}
         </Section>
-        <Section title="Conditions" description="Status reported by vm-operator">
-          <ConditionList conditions={vm.status?.conditions} order={VirtualMachineConditionOrder} />
-        </Section>
+        <div className="grid content-start gap-5">
+          {vm.status?.externalID && <RightsizingPanel vm={vm} />}
+          <Section title="Conditions" description="Status reported by vm-operator">
+            <ConditionList conditions={vm.status?.conditions} order={VirtualMachineConditionOrder} />
+          </Section>
+        </div>
       </div>
     </div>
   );

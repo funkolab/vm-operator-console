@@ -1,7 +1,7 @@
 import { summarizeVM } from "@console/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, FileCode2, LayoutDashboard, LayoutTemplate, Map as MapIcon, Network, Server, ServerCog } from "lucide-react";
+import { Activity, FileCode2, LayoutDashboard, LayoutTemplate, Map as MapIcon, Network, Server, ServerCog, Sparkles } from "lucide-react";
 import { BrandMark } from "@/components/brand";
 import {
   Sidebar,
@@ -31,6 +31,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
     items: [
       { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
       { to: "/infrastructure", label: "Infrastructure", icon: MapIcon },
+      { to: "/insights", label: "Insights", icon: Sparkles },
       { to: "/events", label: "Activity", icon: Activity },
     ],
   },

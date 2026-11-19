@@ -45,6 +45,13 @@ export function insightRoutes(deps: Deps) {
       const { ns, name } = c.req.valid("param");
       return c.json(await deps.insights.infrastructure(userClient(c, deps), ns, name, await visibleVMs(c)));
     })
+    .get("/namespaces/:ns/vms/:name/rightsizing", zv("param", NamedParam), async (c) => {
+      const { ns, name } = c.req.valid("param");
+      return c.json(await deps.insights.rightsizing(userClient(c, deps), ns, name));
+    })
+    .get("/insights/recommendations", zv("query", z.object({ namespace: z.string().optional() })), async (c) => {
+      return c.json(await deps.insights.fleetRecommendations(userClient(c, deps), await visibleVMs(c, c.req.valid("query").namespace)));
+    })
     .get("/insights/top", zv("query", z.object({ namespace: z.string().optional(), limit: z.coerce.number().int().min(1).max(20).default(8) })), async (c) => {
       const q = c.req.valid("query");
       return c.json(await deps.insights.topConsumers(userClient(c, deps), await visibleVMs(c, q.namespace), q.limit));
