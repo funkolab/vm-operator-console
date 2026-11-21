@@ -26,17 +26,12 @@ import { ClusterCapacity, PhaseBreakdown, TopConsumers } from "@/features/dashbo
 import { EventList } from "@/features/events/event-list";
 import { useAlerts } from "@/lib/alerts";
 import { useNamespace, useWorkspace } from "@/lib/namespace";
-import { contextsQuery, eventsQuery, statsQuery, useMe, vmsQuery } from "@/lib/queries";
+import { contextsQuery, eventsQuery, statsQuery, vmsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({ component: Dashboard });
 
-function greeting() {
-  const h = new Date().getHours();
-  return h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-}
-
-function Hero({ user, workspace, healthy, total, issues }: { user?: string; workspace?: string; healthy: number; total: number; issues: number }) {
+function Hero({ workspace, healthy, total, issues }: { workspace?: string; healthy: number; total: number; issues: number }) {
   const pct = total ? Math.round((healthy / total) * 100) : 100;
   return (
     <div className="surface bg-hero animate-fade-up relative overflow-hidden px-5 py-6 sm:px-7 sm:py-7">
@@ -45,16 +40,15 @@ function Hero({ user, workspace, healthy, total, issues }: { user?: string; work
         <div className="flex min-w-0 items-start gap-4">
           <BrandMark className="size-12 shrink-0 shadow-lg" />
           <div className="min-w-0">
-            <div className="text-muted-foreground text-[13px]">{greeting()},</div>
-            <h1 className="truncate text-2xl font-semibold tracking-[-0.02em] sm:text-[1.75rem]">{user}</h1>
+            <div className="text-muted-foreground mb-0.5 text-[11px] font-semibold tracking-[0.08em] uppercase">Dashboard</div>
+            <h1 className="truncate text-2xl font-semibold tracking-[-0.02em] sm:text-[1.75rem]">{workspace ?? "All workspaces"}</h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              {workspace ? `Workspace ${workspace}` : "All workspaces you can access"} ·{" "}
               {issues ? (
                 <span className="text-warning font-medium">
-                  {issues} item{issues > 1 ? "s" : ""} need attention
+                  {issues} item{issues > 1 ? "s" : ""} need{issues > 1 ? "" : "s"} attention
                 </span>
               ) : (
-                <span className="text-success font-medium">all systems nominal</span>
+                <span className="text-success font-medium">All systems nominal</span>
               )}
             </p>
           </div>
@@ -157,7 +151,6 @@ function Attention() {
 function Dashboard() {
   const ns = useNamespace();
   const workspace = useWorkspace();
-  const me = useMe();
   const q = useQuery(statsQuery(ns));
   const vms = useQuery(vmsQuery(ns));
   const ctxs = useQuery(contextsQuery(ns));
@@ -170,7 +163,7 @@ function Dashboard() {
 
   return (
     <Page>
-      <Hero user={me.data?.user} workspace={workspace?.displayName} healthy={s?.vms.ready ?? 0} total={s?.vms.total ?? 0} issues={alerts.length} />
+      <Hero workspace={workspace?.displayName} healthy={s?.vms.ready ?? 0} total={s?.vms.total ?? 0} issues={alerts.length} />
       {q.isLoading ? (
         <LoadingState rows={4} />
       ) : q.error ? (
