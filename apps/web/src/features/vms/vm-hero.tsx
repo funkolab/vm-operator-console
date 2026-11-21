@@ -21,6 +21,7 @@ import { Sparkline, usageTone } from "@/components/charts";
 import { Copyable } from "@/components/copy-button";
 import { PhaseBadge, PowerIcon } from "@/components/status";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { WorkspaceTag } from "@/components/workspace-select";
 import { relativeTime } from "@/lib/format";
 import { vmMetricsQuery, vmPlacementQuery, vmTaskQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -157,9 +158,8 @@ export function VMHero({ vm, actions }: { vm: VirtualMachine; actions: React.Rea
                 <PhaseBadge phase={s.phase} title={s.ready !== "True" ? [s.readyReason, s.readyMessage].filter(Boolean).join(": ") : undefined} />
               </h1>
               <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                <span className="font-mono text-[12.5px]">
-                  {ns}/{s.name}
-                </span>
+                <WorkspaceTag namespace={ns} />
+                <span className="font-mono text-[12.5px]">{s.name}</span>
                 {s.primaryIP && <Copyable value={s.primaryIP} />}
                 {vm.spec.description && <span className="truncate">{vm.spec.description}</span>}
               </div>

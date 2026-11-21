@@ -1,13 +1,9 @@
-import type { CatalogKind, MetricRange, ResourceName, Verb } from "@console/shared";
+import type { CatalogKind, MetricRange, ResourceName, Verb, WorkspaceAccess } from "@console/shared";
 import { keepPreviousData, queryOptions, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "./api";
-import { ALL } from "./namespace";
+import { ALL, meQuery } from "./namespace";
 
-export const meQuery = queryOptions({
-  queryKey: ["me"],
-  queryFn: () => unwrap(api.me.$get()),
-  staleTime: 60_000,
-});
+export { meQuery };
 
 export const vmsQuery = (scope: string) =>
   queryOptions({
@@ -193,21 +189,27 @@ export function useCan() {
   };
 }
 
-/** Namespaces where the user holds a given permission. */
+/** Namespaces (of accessible workspaces) where the user holds a given permission. */
 export function useNamespacesWith(resource: ResourceName, verb: Verb): string[] {
   const { data } = useMe();
-  return (data?.namespaces ?? []).filter((n) => n.permissions[resource]?.[verb]).map((n) => n.name);
+  return (data?.workspaces ?? []).filter((w) => w.permissions[resource]?.[verb]).map((w) => w.namespace);
+}
+
+/** Workspaces where the user holds a given permission. */
+export function useWorkspacesWith(resource: ResourceName, verb: Verb): WorkspaceAccess[] {
+  const { data } = useMe();
+  return (data?.workspaces ?? []).filter((w) => w.permissions[resource]?.[verb]);
 }
 
 /**
- * Namespace preselected in creation forms: the one picked in the top bar, else
- * the first one holding a Prism Central context (VMs only bind contexts from
- * their own namespace), else the first allowed one.
+ * Namespace preselected in creation forms, among the target workspaces: the
+ * only one when a workspace is selected, else the first one holding a Prism
+ * Central context (VMs only bind contexts from their own namespace), else the
+ * first allowed one.
  */
-export function usePreferredNamespace(namespaces: string[], scope: string): { namespace: string; loading: boolean } {
-  const explicit = scope !== ALL && namespaces.includes(scope);
-  const contexts = useQuery({ ...contextsQuery(ALL), enabled: !explicit && namespaces.length > 1 });
-  if (explicit) return { namespace: scope, loading: false };
+export function usePreferredNamespace(namespaces: string[]): { namespace: string; loading: boolean } {
+  const contexts = useQuery({ ...contextsQuery(ALL), enabled: namespaces.length > 1 });
+  if (namespaces.length <= 1) return { namespace: namespaces[0] ?? "", loading: false };
   if (contexts.isLoading) return { namespace: "", loading: true };
   const withContext = new Set((contexts.data ?? []).map((c) => c.metadata.namespace));
   return { namespace: namespaces.find((n) => withContext.has(n)) ?? namespaces[0] ?? "", loading: false };

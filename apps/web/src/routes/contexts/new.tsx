@@ -5,28 +5,27 @@ import { CheckCircle2, KeyRound, Lock, PlugZap, ServerCog, XCircle } from "lucid
 import { useState } from "react";
 import { toast } from "sonner";
 import { Field, NumberInput } from "@/components/form";
-import { ErrorState, Page, PageHeader, Spinner } from "@/components/page";
+import { Page, PageHeader, Spinner } from "@/components/page";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { CreateDenied, useCreateTargets, WorkspaceSelect } from "@/components/workspace-select";
 import { type Credential, CredentialFields } from "@/features/contexts/credential-fields";
 import { SectionCard } from "@/features/vms/spec-editor";
 import { api, errorMessage, unwrap } from "@/lib/api";
-import { ALL, useNamespace } from "@/lib/namespace";
-import { credentialSecretsQuery, useCan, useNamespacesWith } from "@/lib/queries";
+import { credentialSecretsQuery, useCan } from "@/lib/queries";
 
 export const Route = createFileRoute("/contexts/new")({ component: NewContextPage });
 
 function NewContextPage() {
-  const scope = useNamespace();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const can = useCan();
-  const namespaces = useNamespacesWith("nutanixprismcontexts", "create");
-  const [ns, setNs] = useState(scope !== ALL && namespaces.includes(scope) ? scope : (namespaces[0] ?? ""));
+  const targets = useCreateTargets("nutanixprismcontexts");
+  const [ns, setNs] = useState(targets.workspaces[0]?.namespace ?? "");
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [port, setPort] = useState<number | undefined>(9440);
@@ -71,10 +70,10 @@ function NewContextPage() {
     onError: (e) => toast.error(errorMessage(e)),
   });
 
-  if (!namespaces.length)
+  if (!targets.workspaces.length)
     return (
       <Page>
-        <ErrorState error={new Error("You are not allowed to create Prism Central contexts in any namespace.")} />
+        <CreateDenied what="Prism Central accounts" workspace={targets.denied} />
       </Page>
     );
   const credOk = credSource === "existing" ? !!existing : cred.mode === "basic" ? !!cred.username && !!cred.password : !!cred.apiKey;
@@ -92,21 +91,8 @@ function NewContextPage() {
           <Field label="Name" required error={submitted && !DNS1123_LABEL.test(name) ? "Lowercase letters, digits and '-'" : undefined}>
             {(id) => <Input id={id} value={name} placeholder="pc-prod" onChange={(e) => setName(e.target.value.toLowerCase())} />}
           </Field>
-          <Field label="Namespace" required hint="VMs use contexts from their own namespace">
-            {(id) => (
-              <Select value={ns} onValueChange={setNs}>
-                <SelectTrigger id={id} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {namespaces.map((n) => (
-                    <SelectItem key={n} value={n}>
-                      {n}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+          <Field label="Workspace" required hint="VMs use Prism Central accounts from their own workspace">
+            {(id) => <WorkspaceSelect id={id} value={ns} options={targets.workspaces} onChange={setNs} />}
           </Field>
           <Field label="Address" required doc="NutanixPrismContext/spec/endpoint/address" error={submitted && !address ? "Required" : undefined}>
             {(id) => <Input id={id} value={address} placeholder="prism-central.example.com" onChange={(e) => setAddress(e.target.value.trim())} />}
@@ -178,7 +164,7 @@ function NewContextPage() {
             </div>
           </>
         ) : (
-          <Field label="Secret" required hint="Secrets labelled as Prism credentials in this namespace" error={submitted && !existing ? "Required" : undefined}>
+          <Field label="Secret" required hint="Secrets labelled as Prism credentials in this workspace" error={submitted && !existing ? "Required" : undefined}>
             {(id) => (
               <Select value={existing} onValueChange={setExisting}>
                 <SelectTrigger id={id} className="w-full">

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useWorkspaceLabel } from "@/lib/namespace";
 import { catalogQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +59,7 @@ export function ResourceRefPicker({
   invalid?: boolean;
   id?: string;
 }) {
+  const wsLabel = useWorkspaceLabel();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const v = value as RefValue;
@@ -111,7 +113,11 @@ export function ResourceRefPicker({
             {!browsable ? (
               <div className="text-muted-foreground flex flex-col items-center gap-1.5 px-4 py-6 text-center text-sm">
                 <CloudOff className="size-5" />
-                <p>{namespace ? `No Prism Central account in namespace ${namespace}, so the ${label} list is unavailable.` : "Choose a namespace first."}</p>
+                <p>
+                  {namespace
+                    ? `No Prism Central account in workspace ${wsLabel(namespace)}, so the ${label} list is unavailable.`
+                    : "Choose a workspace first."}
+                </p>
                 <p className="text-xs">Type the {label} name above to use it.</p>
               </div>
             ) : q.isLoading ? (

@@ -19,7 +19,7 @@ const browser = await chromium.launch();
 for (const { name, path, scheme } of shots) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, colorScheme: scheme });
   const page = await ctx.newPage();
-  await page.addInitScript(() => localStorage.setItem("console.namespace", "_all"));
+  await page.addInitScript(() => localStorage.setItem("console.workspace", "_all"));
   await page.goto(base + path, { waitUntil: "networkidle" });
   if (name === "deploy-template") {
     await page.getByRole("button", { name: "Deploy" }).click();

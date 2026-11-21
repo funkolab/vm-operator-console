@@ -7,7 +7,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors: string[] = [];
 page.on("pageerror", (e) => errors.push(e.message));
-await page.addInitScript(() => localStorage.setItem("console.namespace", "_all"));
+await page.addInitScript(() => localStorage.setItem("console.workspace", "_all"));
 
 // 1. Command palette: search a VM, then open its contextual actions.
 await page.goto(`${base}/`, { waitUntil: "networkidle" });

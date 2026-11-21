@@ -5,7 +5,7 @@ test.describe("Impersonation and RBAC", () => {
   test("bob only sees team-b and cannot author templates", async ({ browser, request, baseURL }) => {
     const me = await (await request.get("/api/me", { headers: BOB })).json();
     expect(me.user).toBe("bob");
-    expect(me.namespaces.map((n: { name: string }) => n.name)).toEqual(["team-b"]);
+    expect(me.workspaces.map((w: { displayName: string; namespace: string }) => [w.displayName, w.namespace])).toEqual([["Team B", "team-b"]]);
 
     const page = await pageAs(browser, BOB, baseURL);
     await page.goto("/vms");
@@ -15,7 +15,7 @@ test.describe("Impersonation and RBAC", () => {
     await page.goto("/templates");
     await expect(page.getByRole("button", { name: "New template" })).toBeDisabled();
 
-    // Direct API access to another namespace is denied by the API server
+    // Direct API access to another workspace's namespace is denied by the API server
     const res = await request.get("/api/namespaces/team-a/vms/web-01", { headers: BOB });
     expect(res.status()).toBe(403);
     expect((await res.json()).error.message).toContain('User "bob"');
@@ -31,7 +31,7 @@ test.describe("Impersonation and RBAC", () => {
   test("a user without any binding gets an explanatory empty state", async ({ browser, baseURL }) => {
     const page = await pageAs(browser, CAROL, baseURL);
     await page.goto("/");
-    await expect(page.getByText("No accessible namespaces")).toBeVisible();
+    await expect(page.getByText("No accessible workspaces")).toBeVisible();
   });
 
   test("cross-origin mutations are rejected (CSRF)", async ({ request }) => {

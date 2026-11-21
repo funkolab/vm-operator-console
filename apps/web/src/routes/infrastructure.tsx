@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { relativeTime } from "@/lib/format";
-import { useNamespace } from "@/lib/namespace";
+import { useNamespace, useWorkspaceLabel } from "@/lib/namespace";
 import { contextsQuery, infrastructureQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ export const Route = createFileRoute("/infrastructure")({
 });
 
 function VMChip({ vm, dim }: { vm: InfraVM; dim: boolean }) {
+  const wsLabel = useWorkspaceLabel();
   const on = vm.powerState === "ON";
   const content = (
     <span
@@ -57,7 +58,7 @@ function VMChip({ vm, dim }: { vm: InfraVM; dim: boolean }) {
       <TooltipContent>
         <div className="font-medium">{vm.nutanixName}</div>
         <div className="text-xs opacity-80">
-          {vm.managed ? `Managed by vm-operator · ${vm.managed.namespace}/${vm.managed.name} · ${vm.managed.phase}` : "Not managed by vm-operator"} ·{" "}
+          {vm.managed ? `Managed by vm-operator · ${wsLabel(vm.managed.namespace)} · ${vm.managed.name} · ${vm.managed.phase}` : "Not managed by vm-operator"} ·{" "}
           {on ? "on" : "off"}
         </div>
       </TooltipContent>
@@ -177,7 +178,7 @@ function InfrastructurePage() {
         <EmptyState
           icon={<ServerCog className="size-6" />}
           title="No connected Prism Central"
-          description="Add a Prism Central account in a namespace you can access to explore its infrastructure."
+          description="Add a Prism Central account in a workspace you can access to explore its infrastructure."
           action={
             <Button asChild>
               <Link to="/contexts/new">Add Prism Central</Link>
@@ -274,7 +275,7 @@ function InfrastructurePage() {
             );
           })}
           <p className="text-muted-foreground text-xs">
-            {totals.hosts} hosts · {totals.vms} VMs on Prism Central, {totals.managed} managed by vm-operator in namespaces you can access.
+            {totals.hosts} hosts · {totals.vms} VMs on Prism Central, {totals.managed} managed by vm-operator in workspaces you can access.
           </p>
         </>
       )}

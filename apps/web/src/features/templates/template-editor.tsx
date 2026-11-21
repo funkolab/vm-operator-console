@@ -9,6 +9,7 @@ import {
   type ValidationIssue,
   type VMTemplate,
   validateTemplateVM,
+  type WorkspaceAccess,
   zodIssues,
 } from "@console/shared";
 import { AlertTriangle, Code2, FileText, ListChecks, Plus, Sparkles, Trash2, Variable } from "lucide-react";
@@ -33,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { WorkspaceSelect } from "@/components/workspace-select";
 import { SectionCard, VMSpecEditor } from "@/features/vms/spec-editor";
 import { errorIssues } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -262,14 +264,15 @@ function ParametersBuilder({
 export function TemplateEditor({
   initial,
   mode,
-  namespaces,
+  workspaces,
   onSubmit,
   onCancel,
   serverError,
 }: {
   initial: TemplateDraft;
   mode: "create" | "edit";
-  namespaces: string[];
+  /** Workspaces the template can be created in (the field is read-only with a single one). */
+  workspaces: WorkspaceAccess[];
   onSubmit: (t: TemplateDraft) => Promise<unknown>;
   onCancel: () => void;
   serverError?: unknown;
@@ -347,20 +350,9 @@ export function TemplateEditor({
                   />
                 )}
               </Field>
-              <Field label="Namespace" required locked={mode === "edit" ? "The namespace cannot be changed" : undefined}>
+              <Field label="Workspace" required locked={mode === "edit" ? "A template cannot move to another workspace" : undefined}>
                 {(id) => (
-                  <Select value={t.namespace} disabled={mode === "edit"} onValueChange={(v) => setT({ ...t, namespace: v })}>
-                    <SelectTrigger id={id} className="w-full">
-                      <SelectValue placeholder="Select a namespace" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {namespaces.map((n) => (
-                        <SelectItem key={n} value={n}>
-                          {n}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <WorkspaceSelect id={id} value={t.namespace} options={workspaces} disabled={mode === "edit"} onChange={(v) => setT({ ...t, namespace: v })} />
                 )}
               </Field>
               <Field label="Operating system">

@@ -1,6 +1,18 @@
-import type { NamespaceAccess, PermissionMatrix, ResourceName, Verb } from "@console/shared";
+import type { NamespaceAccess, PermissionMatrix, ResourceName, Verb, WorkspaceAccess } from "@console/shared";
 import { type Identity, type KubeClient, R } from "../k8s/client";
+import { isNotFound } from "../k8s/errors";
 import { log } from "../log";
+
+const DISPLAY_NAME = "kommander.mesosphere.io/display-name";
+const DESCRIPTION = "kommander.mesosphere.io/description";
+
+interface WorkspaceObject {
+  metadata: { name: string; annotations?: Record<string, string>; deletionTimestamp?: string };
+  spec?: { namespaceName?: string };
+  status?: { namespaceRef?: { name?: string } };
+}
+
+export type WorkspaceInfo = Omit<WorkspaceAccess, "permissions">;
 
 const GROUP_OF: Record<ResourceName, string> = {
   virtualmachines: "vmm.v4.nutanix.com",
@@ -42,6 +54,7 @@ export class AccessService {
   private cache = new Map<string, CacheEntry<NamespaceAccess[]>>();
   private inflight = new Map<string, Promise<NamespaceAccess[]>>();
   private nsCache?: CacheEntry<string[]>;
+  private wsCache?: CacheEntry<WorkspaceInfo[] | null>;
 
   constructor(
     private readonly sa: KubeClient,
@@ -58,6 +71,7 @@ export class AccessService {
     if (id) this.cache.delete(this.key(id));
     else this.cache.clear();
     this.nsCache = undefined;
+    this.wsCache = undefined;
   }
 
   async check(id: Identity | undefined, verb: string, resource: ResourceName | "namespaces", namespace?: string): Promise<boolean> {
@@ -76,8 +90,60 @@ export class AccessService {
     return res.status?.allowed === true;
   }
 
-  /** Candidate namespaces: WATCH_NAMESPACES, else every namespace (listed by the SA). */
+  /**
+   * Kommander workspaces, listed with the ServiceAccount (they hold no secret
+   * and only name a namespace), or null when the cluster has no Workspace API:
+   * each namespace then stands for a workspace.
+   */
+  async workspaceCatalog(): Promise<WorkspaceInfo[] | null> {
+    if (this.wsCache && this.wsCache.expires > Date.now()) return this.wsCache.value;
+    let value: WorkspaceInfo[] | null;
+    try {
+      const list = await this.sa.listAll<WorkspaceObject>(R.workspaces);
+      value = list.items
+        .filter((w) => !w.metadata.deletionTimestamp)
+        .map((w) => {
+          const ann = w.metadata.annotations ?? {};
+          return {
+            name: w.metadata.name,
+            displayName: ann[DISPLAY_NAME] || w.metadata.name,
+            description: ann[DESCRIPTION] || undefined,
+            namespace: w.status?.namespaceRef?.name || w.spec?.namespaceName || "",
+          };
+        })
+        .filter((w) => w.namespace)
+        .sort((a, b) => a.displayName.localeCompare(b.displayName));
+      if (!value.length) value = null;
+    } catch (e) {
+      if (!isNotFound(e)) log.warn("Cannot list Kommander workspaces; falling back to namespaces", { error: String(e) });
+      value = null;
+    }
+    this.wsCache = { value, expires: Date.now() + 30_000 };
+    return value;
+  }
+
+  /** Workspaces the user can access: those whose namespace passed the access checks. */
+  async workspaces(id: Identity | undefined): Promise<{ source: "kommander" | "namespaces"; workspaces: WorkspaceAccess[] }> {
+    const [catalog, access] = await Promise.all([this.workspaceCatalog(), this.namespaces(id)]);
+    if (!catalog)
+      return { source: "namespaces", workspaces: access.map((a) => ({ name: a.name, displayName: a.name, namespace: a.name, permissions: a.permissions })) };
+    const byNs = new Map(access.map((a) => [a.name, a.permissions]));
+    return {
+      source: "kommander",
+      workspaces: catalog.flatMap((w) => {
+        const permissions = byNs.get(w.namespace);
+        return permissions ? [{ ...w, permissions }] : [];
+      }),
+    };
+  }
+
+  /** Candidate namespaces: those of the workspaces (else every namespace), limited to WATCH_NAMESPACES when set. */
   async candidateNamespaces(): Promise<string[]> {
+    const catalog = await this.workspaceCatalog();
+    if (catalog) {
+      const value = [...new Set(catalog.map((w) => w.namespace))].sort();
+      return this.restrictTo.length ? value.filter((n) => this.restrictTo.includes(n)) : value;
+    }
     if (this.restrictTo.length) return this.restrictTo;
     if (this.nsCache && this.nsCache.expires > Date.now()) return this.nsCache.value;
     const list = await this.sa.listAll<{ metadata: { name: string; deletionTimestamp?: string } }>(R.namespaces);

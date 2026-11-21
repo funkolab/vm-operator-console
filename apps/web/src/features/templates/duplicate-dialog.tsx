@@ -8,9 +8,10 @@ import { Spinner } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { WorkspaceSelect } from "@/components/workspace-select";
 import { api, errorMessage, unwrap } from "@/lib/api";
-import { useNamespacesWith } from "@/lib/queries";
+import { useWorkspace } from "@/lib/namespace";
+import { useWorkspacesWith } from "@/lib/queries";
 
 export function DuplicateDialog({
   template,
@@ -23,10 +24,12 @@ export function DuplicateDialog({
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const targets = useNamespacesWith("configmaps", "create");
+  const allowed = useWorkspacesWith("configmaps", "create");
+  const selected = useWorkspace();
+  const targets = selected ? allowed.filter((w) => w.name === selected.name) : allowed;
   const [name, setName] = useState(`${template.name}-copy`.slice(0, 58));
   const [displayName, setDisplayName] = useState(`${template.displayName} (copy)`);
-  const [ns, setNs] = useState(targets.includes(template.namespace) ? template.namespace : (targets[0] ?? ""));
+  const [ns, setNs] = useState(targets.some((w) => w.namespace === template.namespace) ? template.namespace : (targets[0]?.namespace ?? ""));
   const valid = DNS1123_LABEL.test(name) && name.length <= 58 && !!ns;
   const m = useMutation({
     mutationFn: () =>
@@ -57,22 +60,7 @@ export function DuplicateDialog({
           <Field label="Display name" required>
             {(id) => <Input id={id} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />}
           </Field>
-          <Field label="Namespace">
-            {(id) => (
-              <Select value={ns} onValueChange={setNs}>
-                <SelectTrigger id={id} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {targets.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </Field>
+          <Field label="Workspace">{(id) => <WorkspaceSelect id={id} value={ns} options={targets} onChange={setNs} />}</Field>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

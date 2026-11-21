@@ -5,6 +5,7 @@ import { Cpu, HardDrive, MemoryStick, Network, ServerCog } from "lucide-react";
 import { Sparkline, usageTone } from "@/components/charts";
 import { PhaseBadge, PowerIcon } from "@/components/status";
 import { Checkbox } from "@/components/ui/checkbox";
+import { WorkspaceTag } from "@/components/workspace-select";
 import { vmMetricsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { VMActions } from "./actions";
@@ -24,8 +25,9 @@ export function VMCard({ r, selected, onToggle }: { r: VMRow; selected?: boolean
             <PowerIcon observed={r.powerState} desired={r.desiredPowerState} />
             <span className="truncate font-semibold">{r.displayName}</span>
           </div>
-          <div className="text-muted-foreground mt-0.5 truncate font-mono text-[11.5px]">
-            {r.namespace}/{r.name}
+          <div className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-2 text-[11.5px]">
+            <WorkspaceTag namespace={r.namespace} />
+            <span className="truncate font-mono">{r.name}</span>
           </div>
         </Link>
         <VMActions vm={r.vm} />

@@ -10,7 +10,8 @@ export const CAROL = { "x-dev-user": "carol", "x-dev-groups": "", "x-act-as": "c
 export async function pageAs(browser: Browser, headers: Record<string, string>, baseURL?: string): Promise<Page> {
   const ctx = await browser.newContext({ extraHTTPHeaders: headers, baseURL });
   const page = await ctx.newPage();
-  await page.addInitScript(() => localStorage.setItem("console.namespace", "_all"));
+  // Start on "All workspaces" without overriding a selection made during the test.
+  await page.addInitScript(() => localStorage.getItem("console.workspace") || localStorage.setItem("console.workspace", "_all"));
   return page;
 }
 

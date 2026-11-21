@@ -1,4 +1,4 @@
-import { DNS1123_SUBDOMAIN, GUEST_SCRIPT_KEYS, GUEST_SCRIPT_LABELS, type GuestScriptType } from "@console/shared";
+import { DNS1123_SUBDOMAIN, GUEST_SCRIPT_KEYS, GUEST_SCRIPT_LABELS, type GuestScriptType, type WorkspaceAccess } from "@console/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -7,21 +7,21 @@ import { Spinner } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { WorkspaceSelect } from "@/components/workspace-select";
 import { api, errorMessage, unwrap } from "@/lib/api";
 import { hasErrors, SAMPLES, ScriptEditor, scriptIssues } from "./script-editor";
 
 /**
  * Creates a cloud-init or Sysprep script (a labelled Secret). With `type` set,
- * the engine is fixed (opened from a VM form); with `namespaces`, the user picks
+ * the engine is fixed (opened from a VM form); with `workspaces`, the user picks
  * where to store it.
  */
 export function NewScriptDialog({
   open,
   onOpenChange,
   namespace,
-  namespaces,
+  workspaces,
   type: fixedType,
   initialContent,
   onCreated,
@@ -29,7 +29,8 @@ export function NewScriptDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   namespace: string;
-  namespaces?: string[];
+  /** Workspaces to choose from; the dialog's namespace is fixed otherwise. */
+  workspaces?: WorkspaceAccess[];
   type?: GuestScriptType;
   initialContent?: string;
   onCreated?: (s: { name: string; namespace: string }) => void;
@@ -63,33 +64,16 @@ export function NewScriptDialog({
           <DialogTitle>New {fixedType ? GUEST_SCRIPT_LABELS[fixedType] : "guest customization"} script</DialogTitle>
           <DialogDescription>
             Stored as a Secret under the key <span className="font-mono">{GUEST_SCRIPT_KEYS[type]}</span>. VMs and templates reference it by name, from the same
-            namespace.
+            workspace.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Name" required error={nameError}>
             {(id) => <Input id={id} autoFocus value={name} placeholder="ubuntu-base" onChange={(e) => setName(e.target.value.toLowerCase().trim())} />}
           </Field>
-          {namespaces && namespaces.length > 1 ? (
-            <Field label="Namespace" required>
-              {(id) => (
-                <Select value={ns} onValueChange={setNs}>
-                  <SelectTrigger id={id} className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {namespaces.map((n) => (
-                      <SelectItem key={n} value={n}>
-                        {n}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </Field>
-          ) : (
-            <Field label="Namespace">{(id) => <Input id={id} value={ns} disabled />}</Field>
-          )}
+          <Field label="Workspace" required>
+            {(id) => <WorkspaceSelect id={id} value={ns} options={workspaces ?? []} onChange={setNs} />}
+          </Field>
           {!fixedType && (
             <Field label="Engine" required>
               {() => (

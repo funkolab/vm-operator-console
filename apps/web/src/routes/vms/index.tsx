@@ -37,11 +37,12 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useScopedHiddenColumns, useWorkspaceColumn } from "@/components/workspace-select";
 import { VMActions } from "@/features/vms/actions";
 import { VMCard } from "@/features/vms/vm-card";
 import { api, errorMessage, unwrap } from "@/lib/api";
 import { age, downloadText } from "@/lib/format";
-import { ALL, useNamespace } from "@/lib/namespace";
+import { useNamespace, useWorkspace, useWorkspaceLabel } from "@/lib/namespace";
 import { useCan, useNamespacesWith, vmsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +78,10 @@ function VMListPage() {
   const q = useQuery(vmsQuery(ns));
   const rows = useMemo<Row[]>(() => (q.data ?? []).map((vm) => ({ ...summarizeVM(vm), vm })), [q.data]);
 
+  const workspaceColumn = useWorkspaceColumn<Row>((r) => r.namespace, { facet: true });
+  const hiddenColumns = useScopedHiddenColumns();
+  const workspaceColumnLabel = useWorkspaceLabel();
+  const workspace = useWorkspace();
   const columns = useMemo<ColumnDef<Row, unknown>[]>(
     () => [
       selectColumn<Row>(),
@@ -99,14 +104,7 @@ function VMListPage() {
           </div>
         ),
       },
-      {
-        id: "namespace",
-        accessorKey: "namespace",
-        meta: { label: "Namespace" },
-        header: ({ column }) => <SortHeader label="Namespace" column={column} />,
-        filterFn: facetFilterFn,
-        cell: ({ getValue }) => <span className="text-muted-foreground">{getValue() as string}</span>,
-      },
+      workspaceColumn,
       {
         id: "phase",
         accessorKey: "phase",
@@ -239,7 +237,7 @@ function VMListPage() {
         cell: ({ row: { original: r } }) => <VMActions vm={r.vm} />,
       },
     ],
-    [],
+    [workspaceColumn],
   );
 
   const presentPhases = new Set(rows.map((r) => r.phase));
@@ -253,7 +251,7 @@ function VMListPage() {
       <PageHeader
         title="Virtual machines"
         icon={<Server className="size-5" />}
-        description={ns === ALL ? "All namespaces you can access" : `Namespace ${ns}`}
+        description={workspace ? `Workspace ${workspace.displayName}` : "All workspaces you can access"}
         actions={
           <>
             <Button variant="outline" asChild>
@@ -281,6 +279,7 @@ function VMListPage() {
           initialSearch={search.q ?? ""}
           onSearchChange={(v) => setSearch({ q: v || undefined })}
           rowFilter={rowFilter}
+          hiddenColumns={hiddenColumns}
           gridView={view === "grid"}
           renderGrid={(items) => (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -339,12 +338,12 @@ function VMListPage() {
             r.displayName.toLowerCase().includes(s) ||
             r.ipAddresses.some((ip) => ip.includes(s)) ||
             r.cluster.toLowerCase().includes(s) ||
-            r.namespace.includes(s) ||
+            workspaceColumnLabel(r.namespace).toLowerCase().includes(s) ||
             Object.entries(r.labels).some(([k, v]) => `${k}=${v}`.toLowerCase().includes(s))
           }
           facets={[
             { columnId: "phase", title: "Status", options: VM_PHASES.filter((p) => presentPhases.has(p)).map((p) => ({ value: p })) },
-            ...(ns === ALL ? [{ columnId: "namespace", title: "Namespace" }] : []),
+            ...(workspace ? [] : [{ columnId: "workspace", title: "Workspace" }]),
             { columnId: "cluster", title: "Cluster" },
             { columnId: "context", title: "Prism Central" },
           ]}

@@ -13,10 +13,29 @@ export interface NamespaceAccess {
   permissions: PermissionMatrix;
 }
 
+/**
+ * A workspace the user can work in. On NKP it is a Kommander Workspace
+ * (workspaces.kommander.mesosphere.io) bound to one namespace; on other
+ * clusters each accessible namespace stands for a workspace of the same name.
+ */
+export interface WorkspaceAccess {
+  name: string;
+  displayName: string;
+  description?: string;
+  /** Namespace the workspace resources live in (internal, never shown in the UI). */
+  namespace: string;
+  permissions: PermissionMatrix;
+}
+
 export interface MeResponse {
   user: string;
   groups: string[];
   authMode: string;
+  /** Workspaces the user can access, sorted by display name. */
+  workspaces: WorkspaceAccess[];
+  /** Where workspaces come from: Kommander Workspace resources, or plain namespaces. */
+  workspaceSource: "kommander" | "namespaces";
+  /** Permission matrix of each workspace namespace. */
   namespaces: NamespaceAccess[];
   clusterWide: boolean;
 }

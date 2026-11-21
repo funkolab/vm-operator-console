@@ -19,6 +19,7 @@ import {
 import type { ComponentType } from "react";
 import { EmptyState } from "@/components/page";
 import { formatDate, relativeTime } from "@/lib/format";
+import { useWorkspaceLabel } from "@/lib/namespace";
 import { cn } from "@/lib/utils";
 
 type Tone = "success" | "muted" | "primary" | "violet" | "warning";
@@ -50,31 +51,34 @@ const TONE: Record<Tone, string> = {
 };
 
 function ObjectLink({ e }: { e: KubeEvent }) {
+  const wsLabel = useWorkspaceLabel();
   const { kind, namespace: ns, name } = e.involvedObject;
   if (!name || !ns) return null;
   const cls = "text-foreground/80 hover:text-foreground font-mono text-xs hover:underline";
-  if (kind === "VirtualMachine")
-    return (
+  const where = <span className="text-muted-foreground text-xs">{wsLabel(ns)}</span>;
+  const link =
+    kind === "VirtualMachine" ? (
       <Link to="/vms/$ns/$name" params={{ ns, name }} className={cls}>
-        {ns}/{name}
+        {name}
       </Link>
-    );
-  if (kind === "VirtualMachineService")
-    return (
+    ) : kind === "VirtualMachineService" ? (
       <Link to="/services/$ns/$name" params={{ ns, name }} className={cls}>
-        {ns}/{name}
+        {name}
       </Link>
-    );
-  if (kind === "NutanixPrismContext")
-    return (
+    ) : kind === "NutanixPrismContext" ? (
       <Link to="/contexts/$ns/$name" params={{ ns, name }} className={cls}>
-        {ns}/{name}
+        {name}
       </Link>
+    ) : (
+      <span className="text-muted-foreground font-mono text-xs">
+        {kind} {name}
+      </span>
     );
   return (
-    <span className="text-muted-foreground font-mono text-xs">
-      {kind} {ns}/{name}
-    </span>
+    <>
+      {link}
+      {where}
+    </>
   );
 }
 

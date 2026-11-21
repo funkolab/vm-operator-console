@@ -11,6 +11,7 @@ import { ConditionList, ReadyBadge } from "@/components/status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { WorkspaceTag } from "@/components/workspace-select";
 import { ServiceForm } from "@/features/services/service-form";
 import { api, errorMessage, unwrap } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
@@ -70,7 +71,7 @@ function ServiceDetailPage() {
         <ServiceForm
           initial={svc}
           mode="edit"
-          namespaces={[ns]}
+          workspaces={[]}
           serverError={update.error}
           onSubmit={(s) => update.mutateAsync(s)}
           onCancel={() => setEditing(false)}
@@ -93,7 +94,7 @@ function ServiceDetailPage() {
               {name} <ReadyBadge status={ready?.status} reason={ready?.reason} />
             </span>
           }
-          description={<span className="font-mono">{ns}</span>}
+          description={<WorkspaceTag namespace={ns} />}
           actions={
             <>
               <Button variant="outline" size="sm" disabled={!can(ns, "virtualmachineservices", "update")} onClick={() => setEditing(true)}>

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ApiError } from "@/lib/api";
 import { useLiveUpdates } from "@/lib/live";
-import { ALL, setNamespace, useNamespace } from "@/lib/namespace";
+import { ALL, setWorkspace, useNamespace, useWorkspaceName } from "@/lib/namespace";
 import { meQuery } from "@/lib/queries";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -35,12 +35,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootLayout() {
   const me = useQuery(meQuery);
   const ns = useNamespace();
+  const selectedWorkspace = useWorkspaceName();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const openHelp = useCallback(() => setHelpOpen(true), []);
   useGlobalShortcuts(openHelp);
   const [unauth, setUnauth] = useState(false);
-  const accessible = me.data?.namespaces.map((n) => n.name) ?? [];
+  const workspaces = me.data?.workspaces ?? [];
+  const accessible = workspaces.map((w) => w.namespace);
   const liveNamespaces = ns === ALL ? accessible : accessible.filter((n) => n === ns);
   const live = useLiveUpdates(liveNamespaces);
 
@@ -50,10 +52,10 @@ function RootLayout() {
     return () => window.removeEventListener("console:unauthenticated", h);
   }, []);
 
-  // Fall back to "all namespaces" when the stored namespace is no longer accessible.
+  // Fall back to "all workspaces" when the stored workspace is no longer accessible.
   useEffect(() => {
-    if (me.data && ns !== ALL && !accessible.includes(ns)) setNamespace(ALL);
-  }, [me.data, ns, accessible]);
+    if (me.data && selectedWorkspace !== ALL && !workspaces.some((w) => w.name === selectedWorkspace)) setWorkspace(ALL);
+  }, [me.data, selectedWorkspace, workspaces]);
 
   if (unauth || (me.error instanceof ApiError && me.error.status === 401))
     return (
@@ -89,8 +91,8 @@ function RootLayout() {
             <div className="p-6">
               <EmptyState
                 icon={<ShieldAlert className="size-6" />}
-                title="No accessible namespaces"
-                description={`${me.data?.user} has no permission to list VirtualMachines or templates in any namespace. Ask a cluster administrator to bind you to a vm-console role.`}
+                title="No accessible workspaces"
+                description={`${me.data?.user} has no permission to list VirtualMachines or templates in any workspace. Ask a cluster administrator to bind you to a vm-console role.`}
               />
             </div>
           ) : (

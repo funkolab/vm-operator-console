@@ -179,6 +179,9 @@ depends = ["kind:crds"]
 run = [
   "kubectl --context $KUBE_CONTEXT apply -f hack/kind/rbac-roles.yaml",
   "kubectl --context $KUBE_CONTEXT apply -f hack/kind/seed.yaml",
+  "kubectl --context $KUBE_CONTEXT apply -f hack/kind/workspaces-crd.yaml",
+  "kubectl --context $KUBE_CONTEXT wait --for=condition=Established crd/workspaces.workspaces.kommander.mesosphere.io --timeout=60s",
+  "kubectl --context $KUBE_CONTEXT apply -f hack/kind/workspaces.yaml",
   "bun hack/kind/fake-status.ts --context $KUBE_CONTEXT",
 ]
 

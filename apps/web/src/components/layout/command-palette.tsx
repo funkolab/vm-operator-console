@@ -30,7 +30,7 @@ import { useEffect, useState } from "react";
 import { PhaseBadge } from "@/components/status";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from "@/components/ui/command";
 import { usePowerAction } from "@/features/vms/actions";
-import { useNamespace } from "@/lib/namespace";
+import { useNamespace, useWorkspaceLabel } from "@/lib/namespace";
 import { contextsQuery, templatesQuery, useCan, vmsQuery } from "@/lib/queries";
 
 export const SHORTCUTS: { keys: string; label: string; to?: string }[] = [
@@ -91,6 +91,7 @@ export function useGlobalShortcuts(onHelp: () => void) {
 export function CommandPalette({ open, onOpenChange, onHelp }: { open: boolean; onOpenChange: (o: boolean) => void; onHelp: () => void }) {
   const navigate = useNavigate();
   const ns = useNamespace();
+  const wsLabel = useWorkspaceLabel();
   const can = useCan();
   const power = usePowerAction();
   const { setTheme, resolvedTheme } = useTheme();
@@ -142,7 +143,7 @@ export function CommandPalette({ open, onOpenChange, onHelp }: { open: boolean; 
         <CommandEmpty>No results found.</CommandEmpty>
         {vm ? (
           <>
-            <CommandGroup heading={`${vm.displayName} · ${vm.namespace}`}>
+            <CommandGroup heading={`${vm.displayName} · ${wsLabel(vm.namespace)}`}>
               <CommandItem
                 onSelect={() => {
                   setVm(null);
@@ -228,7 +229,7 @@ export function CommandPalette({ open, onOpenChange, onHelp }: { open: boolean; 
                   return (
                     <CommandItem
                       key={s.key}
-                      value={`vm ${s.name} ${s.displayName} ${s.namespace} ${s.primaryIP ?? ""}`}
+                      value={`vm ${s.name} ${s.displayName} ${wsLabel(s.namespace)} ${s.primaryIP ?? ""}`}
                       onSelect={() => {
                         setVm(s);
                         setSearch("");
@@ -236,7 +237,7 @@ export function CommandPalette({ open, onOpenChange, onHelp }: { open: boolean; 
                     >
                       <Server />
                       <span className="truncate">{s.displayName}</span>
-                      <span className="text-muted-foreground truncate text-xs">{s.namespace}</span>
+                      <span className="text-muted-foreground truncate text-xs">{wsLabel(s.namespace)}</span>
                       <span className="ml-auto">
                         <PhaseBadge phase={s.phase} className="h-5 px-2 text-[10px]" />
                       </span>
@@ -274,7 +275,7 @@ export function CommandPalette({ open, onOpenChange, onHelp }: { open: boolean; 
                   >
                     <LayoutTemplate />
                     <span className="truncate">{t.displayName}</span>
-                    <span className="text-muted-foreground ml-auto text-xs">{t.namespace}</span>
+                    <span className="text-muted-foreground ml-auto text-xs">{wsLabel(t.namespace)}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>

@@ -16,7 +16,7 @@ const browser = await chromium.launch();
 for (const vp of viewports)
   for (const scheme of schemes) {
     const ctx = await browser.newContext({ viewport: sizes[vp], colorScheme: scheme, deviceScaleFactor: vp === "mobile" ? 2 : 1 });
-    await ctx.addInitScript(() => localStorage.setItem("console.namespace", localStorage.getItem("console.namespace") ?? "_all"));
+    await ctx.addInitScript(() => localStorage.setItem("console.workspace", localStorage.getItem("console.workspace") ?? "_all"));
     const page = await ctx.newPage();
     const errors: string[] = [];
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));

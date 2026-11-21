@@ -16,14 +16,15 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useCreateTargets, useScopedHiddenColumns, useWorkspaceColumn, WorkspaceTag } from "@/components/workspace-select";
 import { DeployDialog } from "@/features/templates/deploy-dialog";
 import { DuplicateDialog } from "@/features/templates/duplicate-dialog";
 import { templateExportYaml } from "@/features/templates/export";
 import { OsIcon } from "@/features/templates/os-icon";
 import { api, errorMessage, unwrap } from "@/lib/api";
 import { downloadText, relativeTime } from "@/lib/format";
-import { ALL, useNamespace } from "@/lib/namespace";
-import { templatesQuery, useCan, useNamespacesWith } from "@/lib/queries";
+import { useNamespace } from "@/lib/namespace";
+import { templatesQuery, useCan } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/templates/")({
@@ -100,8 +101,9 @@ function TemplateCard({ t, onDeploy }: { t: Template; onDeploy: () => void }) {
           <Link to="/templates/$ns/$name" params={{ ns: t.namespace, name: t.name }} className="line-clamp-1 font-medium hover:underline">
             {t.displayName}
           </Link>
-          <div className="text-muted-foreground truncate text-xs">
-            {t.namespace} · {t.name}
+          <div className="flex min-w-0 items-center gap-2 text-xs">
+            <WorkspaceTag namespace={t.namespace} />
+            <span className="text-muted-foreground truncate font-mono">{t.name}</span>
           </div>
         </div>
         <TemplateMenu t={t} onDeploy={onDeploy} />
@@ -153,7 +155,9 @@ function TemplatesPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const q = useQuery(templatesQuery(ns));
-  const authorable = useNamespacesWith("configmaps", "create");
+  const authorable = useCreateTargets("configmaps").workspaces;
+  const workspaceColumn = useWorkspaceColumn<Template>((t) => t.namespace);
+  const hiddenColumns = useScopedHiddenColumns();
   const [view, setView] = useState<"grid" | "list">(() => (localStorage.getItem("templates.view") as "grid") ?? "grid");
   const [deploy, setDeploy] = useState<Template | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -185,7 +189,7 @@ function TemplatesPage() {
           </div>
         ),
       },
-      { id: "namespace", accessorKey: "namespace", header: ({ column }) => <SortHeader label="Namespace" column={column} /> },
+      workspaceColumn,
       {
         id: "size",
         accessorFn: (t) => vmVCPUs({ spec: t.vm.spec } as never),
@@ -218,17 +222,18 @@ function TemplatesPage() {
         cell: ({ row: { original: t } }) => <TemplateMenu t={t} onDeploy={() => setDeploy(t)} />,
       },
     ],
-    [],
+    [workspaceColumn],
   );
 
   const importFile = async (file: File) => {
     try {
       const doc = parse(await file.text()) as Record<string, unknown>;
-      const target = ns !== ALL && authorable.includes(ns) ? ns : authorable[0];
-      if (!target) throw new Error("You cannot create templates in any namespace");
+      const ws = authorable[0];
+      if (!ws) throw new Error("You cannot create templates in this workspace");
+      const target = ws.namespace;
       const { kind: _k, namespace: _n, ...body } = doc;
       const created = await unwrap(api.namespaces[":ns"].templates.$post({ param: { ns: target }, query: {}, json: body }));
-      toast.success(`Template ${created.displayName} imported into ${target}`);
+      toast.success(`Template ${created.displayName} imported into ${ws.displayName}`);
       void navigate({ to: "/templates/$ns/$name", params: { ns: target, name: created.name } });
     } catch (e) {
       toast.error(`Import failed: ${errorMessage(e)}`);
@@ -340,6 +345,7 @@ function TemplatesPage() {
               data={filtered}
               columns={columns}
               getRowId={(t) => `${t.namespace}/${t.name}`}
+              hiddenColumns={hiddenColumns}
               onRowClick={(t) => navigate({ to: "/templates/$ns/$name", params: { ns: t.namespace, name: t.name } })}
             />
           )}

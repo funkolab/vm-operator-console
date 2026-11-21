@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { NewScriptDialog } from "@/features/guest-scripts/new-script-dialog";
+import { useWorkspaceLabel } from "@/lib/namespace";
 import { contextsQuery, guestSecretsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -81,6 +82,7 @@ const SIZE_PRESETS = [
 ];
 
 export function VMSpecEditor({ spec, onChange, namespace, issues = [], issuePrefix = "/spec", original, mode, paramToggle, sections }: SpecEditorProps) {
+  const wsLabel = useWorkspaceLabel();
   const show = (s: SectionId) => !sections || sections.includes(s);
   const err = (p: string) => issues.find((i) => i.path === `${issuePrefix}${p}` || i.path.startsWith(`${issuePrefix}${p}/`))?.message;
   const provisioned = mode === "edit" && !!original?.status?.externalID;
@@ -111,7 +113,10 @@ export function VMSpecEditor({ spec, onChange, namespace, issues = [], issuePref
             <Field
               label="Prism Central context"
               doc="VirtualMachine/spec/context"
-              error={err("/context") ?? (noContext ? `No Prism Central account in namespace ${namespace}: add one there or pick another namespace` : undefined)}
+              error={
+                err("/context") ??
+                (noContext ? `No Prism Central account in workspace ${wsLabel(namespace)}: add one there or pick another workspace` : undefined)
+              }
               locked={lockMsg}
               aside={P("/spec/context/name", "Prism Central context")}
             >
@@ -127,7 +132,7 @@ export function VMSpecEditor({ spec, onChange, namespace, issues = [], issuePref
                   <SelectContent>
                     <SelectItem value="__auto">
                       Automatic{" "}
-                      {ctxNames.length === 1 ? `(${ctxNames[0]})` : ctxNames.length === 0 ? "(none in this namespace)" : "(single context in namespace)"}
+                      {ctxNames.length === 1 ? `(${ctxNames[0]})` : ctxNames.length === 0 ? "(none in this workspace)" : "(single account in workspace)"}
                     </SelectItem>
                     {ctxNames.map((n) => (
                       <SelectItem key={n} value={n}>
@@ -932,6 +937,7 @@ function CustomizationSection({
   provisioned: boolean;
   mode: SpecEditorProps["mode"];
 }) {
+  const wsLabel = useWorkspaceLabel();
   const gc = spec.guestCustomization;
   const secrets = useQuery({ ...guestSecretsQuery(namespace ?? ""), enabled: !!namespace && namespace !== "_all" });
   const [dialog, setDialog] = useState(false);
@@ -1004,11 +1010,11 @@ function CustomizationSection({
           doc="VirtualMachine/spec/guestCustomization/secretRef"
           error={
             err("/guestCustomization") ??
-            (missing ? `No ${gc.type === "Sysprep" ? "Sysprep" : "cloud-init"} script named "${selected}" in ${namespace}` : undefined)
+            (missing ? `No ${gc.type === "Sysprep" ? "Sysprep" : "cloud-init"} script named "${selected}" in workspace ${wsLabel(namespace)}` : undefined)
           }
           hint={
             secrets.isSuccess && !candidates.length
-              ? `No ${gc.type === "Sysprep" ? "Sysprep" : "cloud-init"} script in ${namespace} yet: create one with New script`
+              ? `No ${gc.type === "Sysprep" ? "Sysprep" : "cloud-init"} script in workspace ${wsLabel(namespace)} yet: create one with New script`
               : "Reusable scripts are managed under Guest scripts"
           }
         >

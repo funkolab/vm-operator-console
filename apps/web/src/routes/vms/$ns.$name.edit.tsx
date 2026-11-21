@@ -8,6 +8,7 @@ import { z } from "zod";
 import { ErrorState, LoadingState, Page, PageHeader } from "@/components/page";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { WorkspaceTag } from "@/components/workspace-select";
 import { VMForm } from "@/features/vms/vm-form";
 import { ApiError, api, errorMessage, unwrap } from "@/lib/api";
 import { followVM } from "@/lib/followups";
@@ -84,8 +85,9 @@ function EditVMPage() {
         icon={<Pencil className="size-5" />}
         title={`Edit ${snapshot.spec.displayName || name}`}
         description={
-          <span className="font-mono">
-            {ns}/{name}
+          <span className="flex flex-wrap items-center gap-x-3">
+            <span className="font-mono">{name}</span>
+            <WorkspaceTag namespace={ns} />
           </span>
         }
       />
@@ -124,7 +126,7 @@ function EditVMPage() {
         key={formKey}
         initial={formKey === 0 ? applySuggestion(snapshot, cpu, memGiB) : snapshot}
         original={snapshot}
-        namespaces={[ns]}
+        workspaces={[]}
         mode="edit"
         submitLabel="Apply changes"
         serverError={update.error}

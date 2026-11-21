@@ -33,6 +33,7 @@ export const R = {
   events: { group: "", version: "v1", plural: "events", namespaced: true },
   services: { group: "", version: "v1", plural: "services", namespaced: true },
   namespaces: { group: "", version: "v1", plural: "namespaces", namespaced: false },
+  workspaces: { group: "workspaces.kommander.mesosphere.io", version: "v1alpha1", plural: "workspaces", namespaced: false },
   endpointslices: { group: "discovery.k8s.io", version: "v1", plural: "endpointslices", namespaced: true },
   subjectaccessreviews: {
     group: "authorization.k8s.io",

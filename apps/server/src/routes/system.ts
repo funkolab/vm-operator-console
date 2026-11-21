@@ -28,11 +28,17 @@ export function systemRoutes(deps: Deps) {
   return new Hono<AppEnv>()
     .get("/me", async (c) => {
       const id = c.get("identity");
-      const [namespaces, clusterWide] = await Promise.all([deps.access.namespaces(id), deps.access.clusterWide(id).catch(() => false)]);
+      const [namespaces, ws, clusterWide] = await Promise.all([
+        deps.access.namespaces(id),
+        deps.access.workspaces(id),
+        deps.access.clusterWide(id).catch(() => false),
+      ]);
       const body: MeResponse = {
         user: id?.user ?? "(console identity)",
         groups: id?.groups ?? [],
         authMode: deps.cfg.AUTH_MODE,
+        workspaces: ws.workspaces,
+        workspaceSource: ws.source,
         namespaces,
         clusterWide,
       };

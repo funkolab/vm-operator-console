@@ -180,6 +180,7 @@ export function DataTable<T>({
   gridView,
   header,
   rowFilter,
+  hiddenColumns,
 }: {
   data: T[];
   columns: ColumnDef<T, unknown>[];
@@ -204,6 +205,8 @@ export function DataTable<T>({
   header?: ReactNode;
   /** External row filter (e.g. status tabs), applied before faceting. */
   rowFilter?: (row: T) => boolean;
+  /** Columns forced hidden regardless of the saved layout (e.g. workspace when a single one is selected). */
+  hiddenColumns?: string[];
 }) {
   const [sorting, setSorting] = usePersistentState<SortingState>(storageKey && `${storageKey}.sort`, initialSorting);
   const [visibility, setVisibility] = usePersistentState<VisibilityState>(storageKey && `${storageKey}.cols`, {});
@@ -226,7 +229,13 @@ export function DataTable<T>({
     data: filteredData,
     columns,
     getRowId,
-    state: { sorting, columnVisibility: visibility, columnFilters: filters, rowSelection, globalFilter: search },
+    state: {
+      sorting,
+      columnVisibility: hiddenColumns?.length ? { ...visibility, ...Object.fromEntries(hiddenColumns.map((c) => [c, false])) } : visibility,
+      columnFilters: filters,
+      rowSelection,
+      globalFilter: search,
+    },
     initialState: { pagination: { pageSize: size } },
     onSortingChange: setSorting,
     onColumnVisibilityChange: setVisibility,

@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { WorkspaceTag } from "@/components/workspace-select";
 import { NewScriptDialog } from "@/features/guest-scripts/new-script-dialog";
 import { hasErrors, ScriptEditor, scriptIssues } from "@/features/guest-scripts/script-editor";
 import { api, errorMessage, unwrap } from "@/lib/api";
@@ -101,7 +102,7 @@ function GuestScriptPage() {
           title={name}
           description={
             <span className="flex flex-wrap items-center gap-2">
-              <span className="font-mono">{ns}</span>
+              <WorkspaceTag namespace={ns} />
               <EngineBadge type={s.type} />
             </span>
           }
@@ -166,7 +167,7 @@ function GuestScriptPage() {
             <EmptyState
               icon={<EyeOff className="size-6" />}
               title="Content hidden"
-              description="You can see that this script exists, but your role does not allow reading Secrets in this namespace."
+              description="You can see that this script exists, but your role does not allow reading Secrets in this workspace."
               className="py-10"
             />
           )}
@@ -189,7 +190,7 @@ function GuestScriptPage() {
           </Section>
           <Section title="Used by">
             {users === 0 ? (
-              <p className="text-muted-foreground text-sm">Not referenced by any VM or template in this namespace.</p>
+              <p className="text-muted-foreground text-sm">Not referenced by any VM or template in this workspace.</p>
             ) : (
               <ul className="grid gap-2 text-sm">
                 {s.usage.templates.map((t) => (
@@ -238,7 +239,7 @@ function GuestScriptPage() {
               <p className="mt-2">VMs not provisioned yet and VMs deployed from these templates will fail until the reference is fixed.</p>
             </>
           ) : (
-            "The Secret is removed from the namespace."
+            "The script is removed from the workspace."
           )
         }
         onConfirm={() => remove.mutateAsync()}

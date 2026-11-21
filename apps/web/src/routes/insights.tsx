@@ -9,7 +9,7 @@ import { TopConsumers } from "@/features/dashboard/fleet-cards";
 import { VerdictBadge } from "@/features/vms/rightsizing-panel";
 import { api, unwrap } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
-import { ALL, useNamespace } from "@/lib/namespace";
+import { ALL, useNamespace, useWorkspaceLabel } from "@/lib/namespace";
 import { vmsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,7 @@ interface HygieneItem {
 }
 
 function HygieneList({ title, icon, items, empty, tone }: { title: string; icon: React.ReactNode; items: HygieneItem[]; empty: string; tone: string }) {
+  const wsLabel = useWorkspaceLabel();
   return (
     <Section title={title} icon={icon} description={items.length ? `${items.length} VM(s)` : undefined} bodyClassName="p-0 sm:p-0">
       {items.length === 0 ? (
@@ -43,7 +44,7 @@ function HygieneList({ title, icon, items, empty, tone }: { title: string; icon:
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{i.s.displayName}</span>
                   <span className="text-muted-foreground block truncate text-xs">
-                    {i.s.namespace} · {i.detail}
+                    {wsLabel(i.s.namespace)} · {i.detail}
                   </span>
                 </span>
                 <ArrowRight className="text-muted-foreground size-3.5" />

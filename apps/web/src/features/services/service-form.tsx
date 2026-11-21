@@ -1,4 +1,4 @@
-import { ApiVersions, type VirtualMachineService, type VMServicePort, validateVirtualMachineService } from "@console/shared";
+import { ApiVersions, type VirtualMachineService, type VMServicePort, validateVirtualMachineService, type WorkspaceAccess } from "@console/shared";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Plus, Server, Trash2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { WorkspaceSelect } from "@/components/workspace-select";
 import { SectionCard } from "@/features/vms/spec-editor";
 import { api, errorIssues, unwrap } from "@/lib/api";
 
@@ -32,14 +33,14 @@ function useDebounced<T>(v: T, ms = 400): T {
 export function ServiceForm({
   initial,
   mode,
-  namespaces,
+  workspaces,
   onSubmit,
   onCancel,
   serverError,
 }: {
   initial: VirtualMachineService;
   mode: "create" | "edit";
-  namespaces: string[];
+  workspaces: WorkspaceAccess[];
   onSubmit: (s: VirtualMachineService) => Promise<unknown>;
   onCancel: () => void;
   serverError?: unknown;
@@ -81,20 +82,15 @@ export function ServiceForm({
               />
             )}
           </Field>
-          <Field label="Namespace" required>
+          <Field label="Workspace" required>
             {(id) => (
-              <Select value={ns} disabled={mode === "edit"} onValueChange={(v) => setSvc({ ...svc, metadata: { ...svc.metadata, namespace: v } })}>
-                <SelectTrigger id={id} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {namespaces.map((n) => (
-                    <SelectItem key={n} value={n}>
-                      {n}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <WorkspaceSelect
+                id={id}
+                value={ns}
+                options={workspaces}
+                disabled={mode === "edit"}
+                onChange={(v) => setSvc({ ...svc, metadata: { ...svc.metadata, namespace: v } })}
+              />
             )}
           </Field>
           <Field label="Type" doc="VirtualMachineService/spec/type">
@@ -122,7 +118,7 @@ export function ServiceForm({
       <SectionCard
         icon={<Server className="size-4" />}
         title="VM selector"
-        description="VMs in the same namespace whose labels match. Only powered-on VMs with an IPv4 address serve traffic."
+        description="VMs in the same workspace whose labels match. Only powered-on VMs with an IPv4 address serve traffic."
       >
         <div className="grid gap-5 lg:grid-cols-2">
           <Field label="Match labels" error={err("/spec/selector")}>

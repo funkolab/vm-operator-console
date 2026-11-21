@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WorkspaceTag } from "@/components/workspace-select";
 import { DeployDialog } from "@/features/templates/deploy-dialog";
 import { DuplicateDialog } from "@/features/templates/duplicate-dialog";
 import { templateExportYaml } from "@/features/templates/export";
@@ -59,9 +60,8 @@ function TemplateDetailPage() {
           title={t.displayName}
           description={
             <span className="flex flex-wrap items-center gap-2">
-              <span className="font-mono">
-                {ns}/{name}
-              </span>
+              <WorkspaceTag namespace={ns} />
+              <span className="font-mono">{name}</span>
               {t.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="font-normal">
                   {tag}

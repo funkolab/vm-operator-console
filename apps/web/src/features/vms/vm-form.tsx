@@ -1,4 +1,4 @@
-import { DNS1123_LABEL, summarizeChanges, type ValidationIssue, type VirtualMachine, validateVirtualMachine } from "@console/shared";
+import { DNS1123_LABEL, summarizeChanges, type ValidationIssue, type VirtualMachine, validateVirtualMachine, type WorkspaceAccess } from "@console/shared";
 import { AlertTriangle, CheckCircle2, Code2, FileText, PowerOff } from "lucide-react";
 import { useMemo, useState } from "react";
 import { parse, stringify } from "yaml";
@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { WorkspaceSelect } from "@/components/workspace-select";
 import { errorIssues } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { SectionCard, VMSpecEditor } from "./spec-editor";
@@ -40,7 +40,7 @@ export interface SubmitOptions {
 export function VMForm({
   initial,
   original,
-  namespaces,
+  workspaces,
   mode,
   onSubmit,
   onCancel,
@@ -49,7 +49,8 @@ export function VMForm({
 }: {
   initial: VirtualMachine;
   original?: VirtualMachine;
-  namespaces: string[];
+  /** Workspaces the VM can be created in (the field is read-only with a single one). */
+  workspaces: WorkspaceAccess[];
   mode: "create" | "edit";
   onSubmit: (vm: VirtualMachine, opts: SubmitOptions) => Promise<unknown>;
   onCancel: () => void;
@@ -173,7 +174,7 @@ export function VMForm({
         </div>
         {view === "form" ? (
           <>
-            <SectionCard id="identity" icon={<FileText className="size-4" />} title="Identity" description="Kubernetes resource name, namespace and labels">
+            <SectionCard id="identity" icon={<FileText className="size-4" />} title="Identity" description="Name, workspace and labels">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Name" required error={nameErr} locked={mode === "edit" ? "The resource name cannot be changed" : undefined}>
                   {(id) => (
@@ -188,20 +189,15 @@ export function VMForm({
                     />
                   )}
                 </Field>
-                <Field label="Namespace" required locked={mode === "edit" ? "The namespace cannot be changed" : undefined}>
+                <Field label="Workspace" required locked={mode === "edit" ? "A VM cannot move to another workspace" : undefined}>
                   {(id) => (
-                    <Select value={ns} disabled={mode === "edit"} onValueChange={(v) => setVm({ ...vm, metadata: { ...vm.metadata, namespace: v } })}>
-                      <SelectTrigger id={id} className="w-full">
-                        <SelectValue placeholder="Select a namespace" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {namespaces.map((n) => (
-                          <SelectItem key={n} value={n}>
-                            {n}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <WorkspaceSelect
+                      id={id}
+                      value={ns}
+                      options={workspaces}
+                      disabled={mode === "edit"}
+                      onChange={(v) => setVm({ ...vm, metadata: { ...vm.metadata, namespace: v } })}
+                    />
                   )}
                 </Field>
                 <Field label="Labels" className="sm:col-span-2" hint="Labels let VM services select this VM">

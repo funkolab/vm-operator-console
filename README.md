@@ -59,10 +59,18 @@ Browser ──► Traefik (NKP) + remote-auth ──► console ──► kube-a
   Kubernetes call (reads, watches and writes) by impersonating the
   authenticated user**. Kubernetes RBAC and audit therefore apply to the real
   user. There is never a fallback to the ServiceAccount's own rights.
-- The namespace picker and the UI permissions come from SubjectAccessReviews
+- The UI works with **workspaces**: on NKP, the Kommander `Workspace`
+  resources (`workspaces.kommander.mesosphere.io`), each bound to one
+  namespace. Users pick a workspace by its display name and never see
+  namespaces; resources are created in the namespace of the selected
+  workspace. Clusters without the Workspace API fall back to one workspace
+  per namespace. Workspaces are listed by the ServiceAccount (they only name a
+  namespace); a workspace is offered when the user passes the access checks on
+  its namespace.
+- The workspace picker and the UI permissions come from SubjectAccessReviews
   evaluated for the user (cached `PERMISSIONS_TTL_SECONDS`).
 - The ServiceAccount itself only needs: `impersonate` users/groups, `create`
-  (self)subjectaccessreviews, `list` namespaces, and `get` Secrets/ConfigMaps
+  (self)subjectaccessreviews, `list` namespaces and Kommander workspaces, and `get` Secrets/ConfigMaps
   for the Prism catalog proxy (after checking the user can read the context).
 - Identity headers are trusted only from the proxy: the chart ships a
   NetworkPolicy allowing ingress from Traefik pods only; `auth.trustedProxies`

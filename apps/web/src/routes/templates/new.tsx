@@ -3,20 +3,20 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { LayoutTemplate } from "lucide-react";
 import { toast } from "sonner";
-import { ErrorState, LoadingState, Page, PageHeader } from "@/components/page";
+import { LoadingState, Page, PageHeader } from "@/components/page";
+import { CreateDenied, useCreateTargets } from "@/components/workspace-select";
 import { type TemplateDraft, TemplateEditor } from "@/features/templates/template-editor";
 import { api, errorMessage, unwrap } from "@/lib/api";
-import { useNamespace } from "@/lib/namespace";
-import { useNamespacesWith, usePreferredNamespace } from "@/lib/queries";
+import { usePreferredNamespace } from "@/lib/queries";
 
 export const Route = createFileRoute("/templates/new")({ component: NewTemplatePage });
 
 function NewTemplatePage() {
-  const scope = useNamespace();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const namespaces = useNamespacesWith("configmaps", "create");
-  const preferred = usePreferredNamespace(namespaces, scope);
+  const targets = useCreateTargets("configmaps");
+  const namespaces = targets.workspaces.map((w) => w.namespace);
+  const preferred = usePreferredNamespace(namespaces);
   const m = useMutation({
     mutationFn: (t: TemplateDraft) => unwrap(api.namespaces[":ns"].templates.$post({ param: { ns: t.namespace }, query: {}, json: t })),
     onSuccess: (t) => {
@@ -29,7 +29,7 @@ function NewTemplatePage() {
   if (!namespaces.length)
     return (
       <Page>
-        <ErrorState error={new Error("You are not allowed to create templates (ConfigMaps) in any namespace.")} />
+        <CreateDenied what="templates" workspace={targets.denied} />
       </Page>
     );
   if (preferred.loading)
@@ -71,7 +71,7 @@ function NewTemplatePage() {
       <TemplateEditor
         initial={initial}
         mode="create"
-        namespaces={namespaces}
+        workspaces={targets.workspaces}
         serverError={m.error}
         onSubmit={(t) => m.mutateAsync(t)}
         onCancel={() => navigate({ to: "/templates" })}

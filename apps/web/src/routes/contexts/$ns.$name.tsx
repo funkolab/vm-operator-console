@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { WorkspaceTag } from "@/components/workspace-select";
 import { type Credential, CredentialFields } from "@/features/contexts/credential-fields";
 import { api, errorMessage, unwrap } from "@/lib/api";
 import { formatDate, relativeTime } from "@/lib/format";
@@ -83,7 +84,7 @@ function ContextDetailPage() {
               {name} <ReadyBadge status={connected?.status} reason={connected?.status === "True" ? "Connected" : connected?.reason} />
             </span>
           }
-          description={<span className="font-mono">{ns}</span>}
+          description={<WorkspaceTag namespace={ns} />}
           actions={
             <>
               <Button variant="outline" size="sm" disabled={test.isPending} onClick={() => test.mutate()}>

@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { ErrorState, LoadingState, Page, PageHeader } from "@/components/page";
+import { WorkspaceTag } from "@/components/workspace-select";
 import { type TemplateDraft, TemplateEditor } from "@/features/templates/template-editor";
 import { api, errorMessage, unwrap } from "@/lib/api";
 import { templateQuery } from "@/lib/queries";
@@ -45,15 +46,16 @@ function EditTemplatePage() {
         icon={<Pencil className="size-5" />}
         title={`Edit ${q.data.displayName}`}
         description={
-          <span className="font-mono">
-            {ns}/vmt-{name}
+          <span className="flex flex-wrap items-center gap-x-3">
+            <span className="font-mono">{name}</span>
+            <WorkspaceTag namespace={ns} />
           </span>
         }
       />
       <TemplateEditor
         initial={q.data}
         mode="edit"
-        namespaces={[ns]}
+        workspaces={[]}
         serverError={m.error}
         onSubmit={(t) => m.mutateAsync(t)}
         onCancel={() => navigate({ to: "/templates/$ns/$name", params: { ns, name } })}

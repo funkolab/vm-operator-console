@@ -10,9 +10,10 @@ import { EmptyState, ErrorState, LoadingState, Page, PageHeader } from "@/compon
 import { ReadyBadge } from "@/components/status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useCreateTargets, useScopedHiddenColumns, useWorkspaceColumn } from "@/components/workspace-select";
 import { age } from "@/lib/format";
 import { useNamespace } from "@/lib/namespace";
-import { servicesQuery, useNamespacesWith } from "@/lib/queries";
+import { servicesQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/services/")({ component: ServicesPage });
 
@@ -22,7 +23,9 @@ function ServicesPage() {
   const ns = useNamespace();
   const navigate = useNavigate();
   const q = useQuery(servicesQuery(ns));
-  const creatable = useNamespacesWith("virtualmachineservices", "create");
+  const creatable = useCreateTargets("virtualmachineservices").workspaces;
+  const workspaceColumn = useWorkspaceColumn<Svc>((s) => s.metadata.namespace);
+  const hiddenColumns = useScopedHiddenColumns();
   const columns = useMemo<ColumnDef<Svc, unknown>[]>(
     () => [
       {
@@ -39,7 +42,7 @@ function ServicesPage() {
           </Link>
         ),
       },
-      { id: "namespace", accessorFn: (s) => s.metadata.namespace, header: ({ column }) => <SortHeader label="Namespace" column={column} /> },
+      workspaceColumn,
       {
         id: "ready",
         accessorFn: (s) => getCondition(s.status?.conditions, "Ready")?.status ?? "Unknown",
@@ -91,7 +94,7 @@ function ServicesPage() {
         cell: ({ row: { original: s } }) => <span className="text-muted-foreground">{age(s.metadata.creationTimestamp)}</span>,
       },
     ],
-    [],
+    [workspaceColumn],
   );
   return (
     <Page>
@@ -111,6 +114,7 @@ function ServicesPage() {
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
       ) : (
         <DataTable
+          hiddenColumns={hiddenColumns}
           data={q.data ?? []}
           columns={columns}
           getRowId={(s) => `${s.metadata.namespace}/${s.metadata.name}`}

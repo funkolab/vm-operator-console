@@ -38,56 +38,58 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { markAlertsSeen, useAlerts } from "@/lib/alerts";
 import { api, basePath } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
-import { ALL, setNamespace, useNamespace } from "@/lib/namespace";
+import { ALL, setWorkspace, useWorkspace, useWorkspaceLabel, useWorkspaceName, useWorkspaces } from "@/lib/namespace";
 import { useMe } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
-export function NamespaceSwitcher() {
-  const ns = useNamespace();
-  const { data } = useMe();
+export function WorkspaceSwitcher() {
+  const selected = useWorkspaceName();
+  const current = useWorkspace();
+  const workspaces = useWorkspaces();
   const [open, setOpen] = useState(false);
-  const namespaces = data?.namespaces ?? [];
+  const label = selected === ALL || !current ? "All workspaces" : current.displayName;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-9 max-w-[52vw] justify-between gap-2 sm:w-56" aria-label="Select namespace">
+        <Button variant="outline" size="sm" className="h-9 max-w-[52vw] justify-between gap-2 sm:w-56" aria-label="Select workspace">
           <Layers className="text-muted-foreground size-4 shrink-0" />
-          <span className="truncate">{ns === ALL ? "All namespaces" : ns}</span>
+          <span className="truncate">{label}</span>
           <ChevronsUpDown className="ml-auto size-3.5 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start">
+      <PopoverContent className="w-72 p-0" align="start">
         <Command>
-          <CommandInput placeholder="Find namespace…" />
+          <CommandInput placeholder="Find workspace…" />
           <CommandList>
-            <CommandEmpty>No namespace</CommandEmpty>
+            <CommandEmpty>No workspace</CommandEmpty>
             <CommandGroup>
               <CommandItem
+                value="__all__ all workspaces"
                 onSelect={() => {
-                  setNamespace(ALL);
+                  setWorkspace(ALL);
                   setOpen(false);
                 }}
               >
-                <Check className={cn("size-4", ns === ALL ? "opacity-100" : "opacity-0")} />
-                All namespaces
-                <span className="text-muted-foreground ml-auto text-xs">{namespaces.length}</span>
+                <Check className={cn("size-4", selected === ALL ? "opacity-100" : "opacity-0")} />
+                All workspaces
+                <span className="text-muted-foreground ml-auto text-xs">{workspaces.length}</span>
               </CommandItem>
             </CommandGroup>
             <CommandSeparator />
-            <CommandGroup heading="Namespaces you can access">
-              {namespaces.map((n) => {
-                const readOnly = !n.permissions.virtualmachines?.create && !n.permissions.virtualmachines?.patch;
+            <CommandGroup heading="Workspaces you can access">
+              {workspaces.map((w) => {
+                const readOnly = !w.permissions.virtualmachines?.create && !w.permissions.virtualmachines?.patch;
                 return (
                   <CommandItem
-                    key={n.name}
-                    value={n.name}
+                    key={w.name}
+                    value={`${w.displayName} ${w.name}`}
                     onSelect={() => {
-                      setNamespace(n.name);
+                      setWorkspace(w.name);
                       setOpen(false);
                     }}
                   >
-                    <Check className={cn("size-4", ns === n.name ? "opacity-100" : "opacity-0")} />
-                    <span className="truncate">{n.name}</span>
+                    <Check className={cn("size-4", selected === w.name ? "opacity-100" : "opacity-0")} />
+                    <span className="truncate">{w.displayName}</span>
                     {readOnly && (
                       <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px]">
                         read-only
@@ -173,6 +175,7 @@ const SEGMENT_LABEL: Record<string, string> = {
 
 /** Breadcrumbs derived from the URL: /vms/team-a/web-01/edit → Virtual machines › team-a › web-01 › Edit. */
 function Crumbs() {
+  const wsLabel = useWorkspaceLabel();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const rel = basePath && pathname.startsWith(basePath) ? pathname.slice(basePath.length) : pathname;
   const parts = rel.split("/").filter(Boolean);
@@ -181,7 +184,7 @@ function Crumbs() {
   const section = parts[0] as string;
   items.push({ label: SEGMENT_LABEL[section] ?? section, to: parts.length > 1 ? `/${section}` : undefined });
   if (parts.length >= 3 && parts[1] !== "new") {
-    items.push({ label: parts[1] as string, mono: true });
+    items.push({ label: wsLabel(parts[1]) });
     items.push({ label: parts[2] as string, to: parts.length > 3 ? `/${section}/${parts[1]}/${parts[2]}` : undefined, mono: true });
     if (parts[3]) items.push({ label: SEGMENT_LABEL[parts[3]] ?? parts[3] });
   } else if (parts[1]) items.push({ label: SEGMENT_LABEL[parts[1]] ?? parts[1] });
@@ -212,6 +215,7 @@ const SEVERITY_STYLE = {
 } as const;
 
 function AlertsBell() {
+  const wsLabel = useWorkspaceLabel();
   const { alerts, unseen } = useAlerts();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -283,7 +287,7 @@ function AlertsBell() {
                       </span>
                       {a.detail && <span className="text-muted-foreground line-clamp-2 text-xs">{a.detail}</span>}
                       <span className="text-muted-foreground/80 mt-0.5 block text-[11px]">
-                        {a.namespace}
+                        {wsLabel(a.namespace)}
                         {a.since ? ` \u00b7 ${relativeTime(a.since)}` : ""}
                       </span>
                     </span>
@@ -319,7 +323,7 @@ export function Topbar({ onSearch }: { onSearch: () => void }) {
     <header className="bg-background/75 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-1.5 border-b px-2.5 sm:gap-2 backdrop-blur-xl sm:px-4">
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-1 !h-5" />
-      <NamespaceSwitcher />
+      <WorkspaceSwitcher />
       <Separator orientation="vertical" className="mx-1 hidden !h-5 md:block" />
       <Crumbs />
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">

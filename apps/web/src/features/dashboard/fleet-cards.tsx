@@ -8,6 +8,7 @@ import { PHASE_STYLE } from "@/components/status";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useWorkspaceLabel } from "@/lib/namespace";
 import { infrastructureQuery, topConsumersQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -149,6 +150,7 @@ export function ClusterCapacity({ context }: { context?: { namespace: string; na
 
 /** VMs ranked by live CPU usage, with a sparkline of the last 30 minutes. */
 export function TopConsumers({ scope }: { scope: string }) {
+  const wsLabel = useWorkspaceLabel();
   const q = useQuery(topConsumersQuery(scope));
   const items = q.data?.items ?? [];
   return (
@@ -173,7 +175,7 @@ export function TopConsumers({ scope }: { scope: string }) {
               >
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium">{v.displayName}</span>
-                  <span className="text-muted-foreground block truncate text-xs">{v.namespace}</span>
+                  <span className="text-muted-foreground block truncate text-xs">{wsLabel(v.namespace)}</span>
                 </span>
                 <Sparkline values={v.spark} max={100} color={usageTone(v.cpu)} width={84} height={24} />
                 <span className="w-28">

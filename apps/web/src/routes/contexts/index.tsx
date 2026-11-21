@@ -10,9 +10,10 @@ import { EmptyState, ErrorState, LoadingState, Page, PageHeader } from "@/compon
 import { ReadyBadge } from "@/components/status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useCreateTargets, useScopedHiddenColumns, useWorkspaceColumn } from "@/components/workspace-select";
 import { age } from "@/lib/format";
 import { useNamespace } from "@/lib/namespace";
-import { contextsQuery, useNamespacesWith } from "@/lib/queries";
+import { contextsQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/contexts/")({ component: ContextsPage });
 
@@ -22,7 +23,9 @@ function ContextsPage() {
   const ns = useNamespace();
   const navigate = useNavigate();
   const q = useQuery(contextsQuery(ns));
-  const creatable = useNamespacesWith("nutanixprismcontexts", "create");
+  const creatable = useCreateTargets("nutanixprismcontexts").workspaces;
+  const workspaceColumn = useWorkspaceColumn<Ctx>((c) => c.metadata.namespace);
+  const hiddenColumns = useScopedHiddenColumns();
   const columns = useMemo<ColumnDef<Ctx, unknown>[]>(
     () => [
       {
@@ -39,7 +42,7 @@ function ContextsPage() {
           </Link>
         ),
       },
-      { id: "namespace", accessorFn: (c) => c.metadata.namespace, header: ({ column }) => <SortHeader label="Namespace" column={column} /> },
+      workspaceColumn,
       {
         id: "connected",
         accessorFn: (c) => getCondition(c.status?.conditions, "Connected")?.status ?? "Unknown",
@@ -84,7 +87,7 @@ function ContextsPage() {
         cell: ({ row: { original: c } }) => <span className="text-muted-foreground">{age(c.metadata.creationTimestamp)}</span>,
       },
     ],
-    [],
+    [workspaceColumn],
   );
   return (
     <Page>
@@ -104,6 +107,7 @@ function ContextsPage() {
         <ErrorState error={q.error} onRetry={() => q.refetch()} />
       ) : (
         <DataTable
+          hiddenColumns={hiddenColumns}
           data={q.data ?? []}
           columns={columns}
           getRowId={(c) => `${c.metadata.namespace}/${c.metadata.name}`}
@@ -112,7 +116,7 @@ function ContextsPage() {
             <EmptyState
               icon={<ServerCog className="size-6" />}
               title="No Prism Central account"
-              description="Add a Prism Central endpoint and credentials so VMs in this namespace can be provisioned."
+              description="Add a Prism Central endpoint and credentials so VMs in this workspace can be provisioned."
               action={
                 creatable.length ? (
                   <Button asChild>

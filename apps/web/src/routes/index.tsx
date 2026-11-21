@@ -25,7 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ClusterCapacity, PhaseBreakdown, TopConsumers } from "@/features/dashboard/fleet-cards";
 import { EventList } from "@/features/events/event-list";
 import { useAlerts } from "@/lib/alerts";
-import { ALL, useNamespace } from "@/lib/namespace";
+import { useNamespace, useWorkspace } from "@/lib/namespace";
 import { contextsQuery, eventsQuery, statsQuery, useMe, vmsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +36,7 @@ function greeting() {
   return h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
-function Hero({ user, scope, healthy, total, issues }: { user?: string; scope: string; healthy: number; total: number; issues: number }) {
+function Hero({ user, workspace, healthy, total, issues }: { user?: string; workspace?: string; healthy: number; total: number; issues: number }) {
   const pct = total ? Math.round((healthy / total) * 100) : 100;
   return (
     <div className="surface bg-hero animate-fade-up relative overflow-hidden px-5 py-6 sm:px-7 sm:py-7">
@@ -48,7 +48,7 @@ function Hero({ user, scope, healthy, total, issues }: { user?: string; scope: s
             <div className="text-muted-foreground text-[13px]">{greeting()},</div>
             <h1 className="truncate text-2xl font-semibold tracking-[-0.02em] sm:text-[1.75rem]">{user}</h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              {scope === ALL ? "All namespaces you can access" : `Namespace ${scope}`} ·{" "}
+              {workspace ? `Workspace ${workspace}` : "All workspaces you can access"} ·{" "}
               {issues ? (
                 <span className="text-warning font-medium">
                   {issues} item{issues > 1 ? "s" : ""} need attention
@@ -156,6 +156,7 @@ function Attention() {
 
 function Dashboard() {
   const ns = useNamespace();
+  const workspace = useWorkspace();
   const me = useMe();
   const q = useQuery(statsQuery(ns));
   const vms = useQuery(vmsQuery(ns));
@@ -169,7 +170,7 @@ function Dashboard() {
 
   return (
     <Page>
-      <Hero user={me.data?.user} scope={ns} healthy={s?.vms.ready ?? 0} total={s?.vms.total ?? 0} issues={alerts.length} />
+      <Hero user={me.data?.user} workspace={workspace?.displayName} healthy={s?.vms.ready ?? 0} total={s?.vms.total ?? 0} issues={alerts.length} />
       {q.isLoading ? (
         <LoadingState rows={4} />
       ) : q.error ? (

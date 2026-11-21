@@ -5,11 +5,11 @@ import { Server } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { ErrorState, LoadingState, Page, PageHeader } from "@/components/page";
+import { CreateDenied, useCreateTargets } from "@/components/workspace-select";
 import { VMForm } from "@/features/vms/vm-form";
 import { api, errorMessage, unwrap } from "@/lib/api";
 import { followVM } from "@/lib/followups";
-import { useNamespace } from "@/lib/namespace";
-import { useNamespacesWith, usePreferredNamespace, vmQuery } from "@/lib/queries";
+import { usePreferredNamespace, vmQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/vms/new")({
   validateSearch: z.object({ from: z.string().optional() }),
@@ -33,13 +33,13 @@ function blankVM(ns: string): VirtualMachine {
 
 function NewVMPage() {
   const { from } = Route.useSearch();
-  const scope = useNamespace();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const namespaces = useNamespacesWith("virtualmachines", "create");
+  const targets = useCreateTargets("virtualmachines");
+  const namespaces = targets.workspaces.map((w) => w.namespace);
   const [srcNs, srcName] = from?.split("/") ?? [];
   const src = useQuery({ ...vmQuery(srcNs ?? "", srcName ?? ""), enabled: !!from });
-  const preferred = usePreferredNamespace(namespaces, scope);
+  const preferred = usePreferredNamespace(namespaces);
   const defaultNs = preferred.namespace;
 
   const create = useMutation({
@@ -68,7 +68,7 @@ function NewVMPage() {
   if (!namespaces.length)
     return (
       <Page>
-        <ErrorState error={new Error("You are not allowed to create VirtualMachines in any namespace.")} />
+        <CreateDenied what="VMs" workspace={targets.denied} />
       </Page>
     );
 
@@ -92,7 +92,7 @@ function NewVMPage() {
       <VMForm
         key={from ?? "new"}
         initial={initial}
-        namespaces={namespaces}
+        workspaces={targets.workspaces}
         mode="create"
         submitLabel="Create VM"
         serverError={create.error}

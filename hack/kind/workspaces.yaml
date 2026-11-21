@@ -1,0 +1,18 @@
+# Kommander workspaces mapping to the seeded namespaces (see workspaces-crd.yaml).
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: Workspace
+metadata:
+  name: team-a-x7k2p
+  annotations:
+    kommander.mesosphere.io/display-name: Team A
+spec:
+  namespaceName: team-a
+---
+apiVersion: workspaces.kommander.mesosphere.io/v1alpha1
+kind: Workspace
+metadata:
+  name: team-b-q9m4z
+  annotations:
+    kommander.mesosphere.io/display-name: Team B
+spec:
+  namespaceName: team-b
